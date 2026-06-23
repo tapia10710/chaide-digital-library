@@ -1,0 +1,4044 @@
+{
+  "documents": [
+    {
+      "id": "upload-1779203627877-83sbom",
+      "title": "CATÁLOGO COBIJAS SUNSET",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 31,
+      "coverUrl": "/storage/covers/upload-1779203627877-83sbom.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203627877-83sbom.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 10238714,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:14:00.174Z",
+      "indexItems": [
+        {
+          "id": "auto-1-obijas",
+          "title": "\u001fOBIJAS",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-1-haide",
+          "title": "\u001fhaide",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-2-sunset",
+          "title": "Sunset",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-3-diseno-1",
+          "title": "DISEÑO 1",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-3-termica-gran-liviana-antialergica",
+          "title": "TÉRMICA GRAN LIVIANA ANTIALÉRGICA",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-3-suavidad",
+          "title": "SUAVIDAD",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-4-diseno-2",
+          "title": "DISEÑO 2",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-6-diseno-4",
+          "title": "DISEÑO 4",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-7-diseno-5-diseno-1",
+          "title": "DISEÑO 5 DISEÑO 1",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-8-sunset-soft",
+          "title": "Sunset Soft",
+          "pageNumber": 8,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-9-termica-gran-diseno-antialergica",
+          "title": "TÉRMICA GRAN DISEÑO ANTIALÉRGICA",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-9-suavidad-versatil",
+          "title": "SUAVIDAD VERSATIL",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-10-2-plazas-3-plazas",
+          "title": "2 plazas 3 plazas",
+          "pageNumber": 10,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-11-zafiro",
+          "title": "Zafiro",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-12-termica-liviana-antialergica",
+          "title": "TÉRMICA LIVIANA ANTIALÉRGICA",
+          "pageNumber": 12,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-14-diseno-3",
+          "title": "DISEÑO 3",
+          "pageNumber": 14,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-16-diseno-5",
+          "title": "DISEÑO 5",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-17-coleccion",
+          "title": "COLECCIÓN",
+          "pageNumber": 17,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-18-termica-antialergico-suave",
+          "title": "TÉRMICA ANTIALÉRGICO SUAVE",
+          "pageNumber": 18,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-18-y-liviana",
+          "title": "Y LIVIANA",
+          "pageNumber": 18,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-20-diseno-6",
+          "title": "DISEÑO 6",
+          "pageNumber": 20,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-21-diseno-7",
+          "title": "DISEÑO 7",
+          "pageNumber": 21,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-22-diseno-8",
+          "title": "DISEÑO 8",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-23-cobijas",
+          "title": "COBIJAS",
+          "pageNumber": 23,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-23-growing",
+          "title": "Growing",
+          "pageNumber": 23,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-24-disponibles",
+          "title": "DISPONIBLES",
+          "pageNumber": 24,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-25-viajera",
+          "title": "Viajera",
+          "pageNumber": 25,
+          "level": 2,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-27-diseno-9",
+          "title": "DISEÑO 9",
+          "pageNumber": 27,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-28-baby-baby",
+          "title": "Baby Baby",
+          "pageNumber": 28,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-28-suave-y-liviana",
+          "title": "SUAVE Y LIVIANA",
+          "pageNumber": 28,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-28-chaide-chaide",
+          "title": "Chaide Chaide",
+          "pageNumber": 28,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-28-medida-cobija",
+          "title": "MEDIDA COBIJA",
+          "pageNumber": 28,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-28-brilla-en-la-oscuridad",
+          "title": "BRILLA EN LA OSCURIDAD",
+          "pageNumber": 28,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-31-chaideoficial",
+          "title": "@chaideoficial",
+          "pageNumber": 31,
+          "level": 1,
+          "source": "auto",
+          "score": 10
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203627810-ik18yr",
+      "title": "DUVET ZAFIRO LLANOS",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 8,
+      "coverUrl": "/storage/covers/upload-1779203627810-ik18yr.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203627810-ik18yr.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 1001820,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:13:55.889Z",
+      "indexItems": [
+        {
+          "id": "auto-1-tela-elaborada-con-microfibra-suave-al-tacto",
+          "title": "Tela elaborada con microfibra suave al tacto",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-2-blanco",
+          "title": "BLANCO",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-3-celeste",
+          "title": "CELESTE",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-4-habano",
+          "title": "HABANO",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-5-plomo",
+          "title": "PLOMO",
+          "pageNumber": 5,
+          "level": 0,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-6-turquesa",
+          "title": "TURQUESA",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-7-violeta",
+          "title": "VIOLETA",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "auto",
+          "score": 9
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203627513-3xt928",
+      "title": "CATALOGO TÉCNICO 2025",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 229,
+      "coverUrl": "/storage/covers/upload-1779203627513-3xt928.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203627513-3xt928.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 19110971,
+      "isActive": true,
+      "isFeatured": true,
+      "updatedAt": "2026-05-19T15:13:51.270Z",
+      "indexItems": [
+        {
+          "id": "auto-25-linea-premium",
+          "title": "LÍNEA PREMIUM",
+          "pageNumber": 25,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-25-colchones",
+          "title": "COLCHONES",
+          "pageNumber": 25,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-26-enfundados-individualmente-sentiras-un-descanso-",
+          "title": "enfundados individualmente, sentirás un descanso envolvente",
+          "pageNumber": 26,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-27-estructura-interna",
+          "title": "ESTRUCTURA INTERNA",
+          "pageNumber": 27,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-40-palace",
+          "title": "PALACE",
+          "pageNumber": 40,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-41-superficie-ocasionada-por-el-calor-corporal",
+          "title": "superficie ocasionada por el calor corporal",
+          "pageNumber": 41,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-44-",
+          "title": "\u001a\u001b \u0005\u0002\u0005\u0001\u0004\u0002\u0006\u0003\u0007",
+          "pageNumber": 44,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-47-j",
+          "title": "\u001d\u0016 J \u001f\"\u0012\",\u001c\u0012,\u0014\u0012\u001c\u001a\u0015\u0012\u0015,\u0015\u0016\u001c,#%\u0016 « \u001f,',\"\u0016\u0015%\u0014\u0016,\u0016\u001c,\u0016#$\" £ #\u0004",
+          "pageNumber": 47,
+          "level": 1,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-51-linea-chaide",
+          "title": "LÍNEA CHAIDE",
+          "pageNumber": 51,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-62-continental",
+          "title": "CONTINENTAL",
+          "pageNumber": 62,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-62-doble-box-top",
+          "title": "DOBLE BOX TOP",
+          "pageNumber": 62,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-62-de-confort",
+          "title": "DE CONFORT*",
+          "pageNumber": 62,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-62-intermedio",
+          "title": "INTERMEDIO",
+          "pageNumber": 62,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-63-que-previene-alergias-y-brinda-un-descanso",
+          "title": "que previene alergias y brinda un descanso",
+          "pageNumber": 63,
+          "level": 1,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-64-pillow-top-ng",
+          "title": "PILLOW TOP NG",
+          "pageNumber": 64,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-65-medidas-disponibles",
+          "title": "MEDIDAS DISPONIBLES",
+          "pageNumber": 65,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-66-non-flip-ng",
+          "title": "NON FLIP NG",
+          "pageNumber": 66,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-67-medida-1-ancho-2-largo-3-altura",
+          "title": "MEDIDA 1. ANCHO 2. LARGO 3. ALTURA",
+          "pageNumber": 67,
+          "level": 2,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-68-tradicional-ng",
+          "title": "TRADICIONAL NG",
+          "pageNumber": 68,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-69-continental-continental",
+          "title": "CONTINENTAL CONTINENTAL",
+          "pageNumber": 69,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-71--",
+          "title": "\u001e\u0005 \u0014\u0019\u001f\u0015/\u0017\"!/'%\u0015'\u0015 \u001d\u0019!'\"/\u0011%\"\u0013\u001c\u001d\u0019\u001f\u0018\u0003/#%\"'\u0019\u0017\u0017\u001d-!",
+          "pageNumber": 71,
+          "level": 2,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-84-suave-brisa",
+          "title": "SUAVE BRISA",
+          "pageNumber": 84,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-85-antiacaros-y-antibacterias",
+          "title": "antiácaros y antibacterias",
+          "pageNumber": 85,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-95-y",
+          "title": "\u0002\u0018 \u0010 \u0005\u0015\u0005\u0018 \u0005\u0001\u0007\b \u0002\u0006\u0001\u0007\b \u0002\u0005 Y \u0012\u0012 \u0007\b",
+          "pageNumber": 95,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-109-cervical-memory-foam-dark",
+          "title": "CERVICAL MEMORY FOAM DARK",
+          "pageNumber": 109,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-143-sabanas",
+          "title": "SÁBANAS",
+          "pageNumber": 143,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-143-gran-100",
+          "title": "GRAN 100%",
+          "pageNumber": 143,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-143-suavidad-algodon",
+          "title": "SUAVIDAD ALGODÓN",
+          "pageNumber": 143,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-144-medida-disponible",
+          "title": "MEDIDA DISPONIBLE",
+          "pageNumber": 144,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-145-2-½-plazas",
+          "title": "2 ½ Plazas",
+          "pageNumber": 145,
+          "level": 2,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-170-muebles-de-dormitorio-camas",
+          "title": "MUEBLES DE DORMITORIO CAMAS",
+          "pageNumber": 170,
+          "level": 0,
+          "source": "auto",
+          "score": 22
+        },
+        {
+          "id": "auto-170-paris",
+          "title": "PARIS",
+          "pageNumber": 170,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-170-de-liquidos",
+          "title": "DE LÍQUIDOS",
+          "pageNumber": 170,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-179-muebles-de-dormitorio-velador-e-tech",
+          "title": "MUEBLES DE DORMITORIO VELADOR E-TECH",
+          "pageNumber": 179,
+          "level": 0,
+          "source": "auto",
+          "score": 22
+        },
+        {
+          "id": "auto-190-sofas-cama",
+          "title": "SOFÁS CAMA",
+          "pageNumber": 190,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-190-martinica",
+          "title": "MARTINICA",
+          "pageNumber": 190,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-192-altura-de-cama",
+          "title": "ALTURA DE CAMA",
+          "pageNumber": 192,
+          "level": 2,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-193-munich-box",
+          "title": "MÚNICH BOX",
+          "pageNumber": 193,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-194-foam-box",
+          "title": "FOAM BOX",
+          "pageNumber": 194,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-195-3-para-disfrutar-tu",
+          "title": "3 PARA DISFRUTAR TU",
+          "pageNumber": 195,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-195-sencillos-pasos",
+          "title": "SENCILLOS PASOS",
+          "pageNumber": 195,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-195-blocks-fun",
+          "title": "BLOCKS FUN",
+          "pageNumber": 195,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-195-abre-desenrolla-crea-y-juega",
+          "title": "ABRE DESENROLLA CREA Y JUEGA",
+          "pageNumber": 195,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-214-5-4",
+          "title": "\u0001 *5 4 \u0001\u0002 \u0005 \u0001\b\u0017 \u0013\u0017 \u0014\u0015\u0017 \u0006 \u0002\u0017 \u0001\u0002 \u0010\u0003\u0017 \u0003\b \u0016\u0004\u0017 \u0004 \u0005 \u0005\u0011\u0017 \u0006\u0007 \u000e\u000f\u0012\u0017",
+          "pageNumber": 214,
+          "level": 2,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-215-1-sabana",
+          "title": "1 SÁBANA",
+          "pageNumber": 215,
+          "level": 2,
+          "source": "auto",
+          "score": 9
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203277626-qye3o",
+      "title": "CATÁLOGO DE MUEBLES",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 42,
+      "coverUrl": "/storage/covers/upload-1779203277626-qye3o.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203277626-qye3o.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 25886825,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:10:25.054Z",
+      "indexItems": [
+        {
+          "id": "auto-1-muebles",
+          "title": "MUEBLES",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-4-dormitorio",
+          "title": "dormitorio",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-4-muebles-de",
+          "title": "Muebles de",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-4-bases-para-colchon-camas-cabeceros",
+          "title": "BASES PARA COLCHÓN CAMAS CABECEROS",
+          "pageNumber": 4,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-5-innovaciones",
+          "title": "Innovaciones",
+          "pageNumber": 5,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-5-tecnologicas",
+          "title": "Tecnológicas",
+          "pageNumber": 5,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-5-durabilidad",
+          "title": "DURABILIDAD",
+          "pageNumber": 5,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-5-repelente-facil",
+          "title": "REPELENTE FÁCIL",
+          "pageNumber": 5,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-5-de-liquidos-limpieza",
+          "title": "DE LÍQUIDOS LIMPIEZA",
+          "pageNumber": 5,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-6-bases-de-liquidos",
+          "title": "BASES DE LÍQUIDOS",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-6-altura-30-cm",
+          "title": "ALTURA 30 cm",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-6-coleccion-vintage",
+          "title": "COLECCIÓN VINTAGE",
+          "pageNumber": 6,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-6-coleccion-stone",
+          "title": "COLECCIÓN STONE",
+          "pageNumber": 6,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-7-altura-31-cm",
+          "title": "ALTURA 31 cm",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-7-tapiz",
+          "title": "TAPIZ",
+          "pageNumber": 7,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-8-imperial-incluye-estructura-patas",
+          "title": "IMPERIAL (Incluye estructura + patas)",
+          "pageNumber": 8,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-9-bases",
+          "title": "BASES",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-9-funcionales",
+          "title": "FUNCIONALES",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-9-d-u-o",
+          "title": "D U O",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-9-soporte-tela",
+          "title": "SOPORTE TELA",
+          "pageNumber": 9,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-9-y-estabilidad-antideslizante",
+          "title": "Y ESTABILIDAD ANTIDESLIZANTE",
+          "pageNumber": 9,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-10-10-de-garantia",
+          "title": "10 DE GARANTÍA",
+          "pageNumber": 10,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-10-electrica",
+          "title": "ELÉCTRICA",
+          "pageNumber": 10,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-11-camas",
+          "title": "CAMAS",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-11-florencia",
+          "title": "FLORENCIA",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-11-de-liquidos",
+          "title": "DE LÍQUIDOS",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-12-berlin",
+          "title": "BERLÍN",
+          "pageNumber": 12,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-13-milos",
+          "title": "MILOS",
+          "pageNumber": 13,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-14-praga",
+          "title": "PRAGA",
+          "pageNumber": 14,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-15-boston",
+          "title": "BOSTON",
+          "pageNumber": 15,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-16-gran-berlin",
+          "title": "GRAN BERLÍN",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-16-gran-b-9ia",
+          "title": "GRAN B 9IÃ",
+          "pageNumber": 16,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-17-limpieza",
+          "title": "LIMPIEZA",
+          "pageNumber": 17,
+          "level": 1,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-18-cabecero",
+          "title": "CABECERO",
+          "pageNumber": 18,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-18-altura-1",
+          "title": "ALTURA 1",
+          "pageNumber": 18,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-19-baru",
+          "title": "BARÚ",
+          "pageNumber": 19,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-19-repelente-durabilidad-facil",
+          "title": "REPELENTE DURABILIDAD FÁCIL",
+          "pageNumber": 19,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-20-modular",
+          "title": "MODULAR",
+          "pageNumber": 20,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-21-veladores",
+          "title": "VELADORES",
+          "pageNumber": 21,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-21-velador-florencia-ve",
+          "title": "VELADOR FLORENCIA VE",
+          "pageNumber": 21,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-21-medida-disponible-med",
+          "title": "MEDIDA DISPONIBLE MED",
+          "pageNumber": 21,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-21-velador-ferrara",
+          "title": "VELADOR FERRARA",
+          "pageNumber": 21,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-22-velador-montecarlo",
+          "title": "VELADOR MONTECARLO",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-23-color-de-estructura-disponible",
+          "title": "COLOR DE ESTRUCTURA DISPONIBLE",
+          "pageNumber": 23,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-24-sofas-cama",
+          "title": "Sofás cama",
+          "pageNumber": 24,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-24-oporto-de-liquidos-limpieza",
+          "title": "Oporto DE LÍQUIDOS LIMPIEZA",
+          "pageNumber": 24,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-25-altura-de-cama",
+          "title": "ALTURA DE CAMA",
+          "pageNumber": 25,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-27-panel-pane",
+          "title": "PANEL PANE",
+          "pageNumber": 27,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-27-de-reso-de-resortes",
+          "title": "DE RESO DE RESORTES",
+          "pageNumber": 27,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-28-95-cm",
+          "title": "95 cm",
+          "pageNumber": 28,
+          "level": 2,
+          "source": "auto",
+          "score": 6
+        },
+        {
+          "id": "auto-29-espacios-reducidos",
+          "title": "ESPACIOS REDUCIDOS",
+          "pageNumber": 29,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-30-panel",
+          "title": "PANEL",
+          "pageNumber": 30,
+          "level": 2,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-31-altura-repelente",
+          "title": "ALTURA REPELENTE",
+          "pageNumber": 31,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-31-de-cama-de-liquidos",
+          "title": "DE CAMA DE LÍQUIDOS",
+          "pageNumber": 31,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-31-desabrocha-las-haladeras-del",
+          "title": "Desabrocha las haladeras del",
+          "pageNumber": 31,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-32-191-cm-espuma-de-alta-repelente",
+          "title": "191 cm ESPUMA DE ALTA REPELENTE",
+          "pageNumber": 32,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-32-3-para-disfrutar-tu",
+          "title": "3 PARA DISFRUTAR TU",
+          "pageNumber": 32,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-32-tecnologia-de-liquidos",
+          "title": "TECNOLOGÍA DE LÍQUIDOS",
+          "pageNumber": 32,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-32-facil-de-durabilidad",
+          "title": "FÁCIL DE DURABILIDAD",
+          "pageNumber": 32,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-32-transportar-t",
+          "title": "TRANSPORTAR T",
+          "pageNumber": 32,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-33-repelente-repe",
+          "title": "REPELENTE REPE",
+          "pageNumber": 33,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-33-durabilidad-dura",
+          "title": "DURABILIDAD DURA",
+          "pageNumber": 33,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-33-facil-fa",
+          "title": "FÁCIL FÁ",
+          "pageNumber": 33,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-33-limpieza-lim",
+          "title": "LIMPIEZA LIM",
+          "pageNumber": 33,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-34-accesorios",
+          "title": "Accesorios",
+          "pageNumber": 34,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-35-manual-y-electrico",
+          "title": "MANUAL Y ELÉCTRICO",
+          "pageNumber": 35,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-35-reclinable-zeus",
+          "title": "RECLINABLE ZEUS",
+          "pageNumber": 35,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-36-sofa",
+          "title": "SOFÁ",
+          "pageNumber": 36,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-36-reclinable-apolo",
+          "title": "RECLINABLE APOLO",
+          "pageNumber": 36,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-37-mecedora",
+          "title": "MECEDORA",
+          "pageNumber": 37,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-37-alma",
+          "title": "ALMA",
+          "pageNumber": 37,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-38-bench",
+          "title": "BENCH",
+          "pageNumber": 38,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-39-ottoman-tradicional",
+          "title": "OTTOMAN TRADICIONAL",
+          "pageNumber": 39,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-40-ottoman-cama-viena",
+          "title": "OTTOMAN CAMA VIENA",
+          "pageNumber": 40,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-41-eleanor-roosevelt",
+          "title": "Eleanor Roosevelt",
+          "pageNumber": 41,
+          "level": 1,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-42-tecnico",
+          "title": "TÉCNICO",
+          "pageNumber": 42,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-42-y-conoce-mas",
+          "title": "Y CONOCE MÁS",
+          "pageNumber": 42,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-42-escanea",
+          "title": "ESCANEA",
+          "pageNumber": 42,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203277526-u7fp7",
+      "title": "CATALOGO PET DREAMS 2025",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 7,
+      "coverUrl": "/storage/covers/upload-1779203277526-u7fp7.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203277526-u7fp7.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 1111757,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:10:18.312Z",
+      "indexItems": [
+        {
+          "id": "ocr-4-soporte-y-comodidad-adecuada",
+          "title": "* Soporte y comodidad adecuada",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "ocr",
+          "score": 8,
+          "ocrConfidence": 92
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203277423-5e8xrf",
+      "title": "Catálogo Alternativa",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 4,
+      "coverUrl": "/storage/covers/upload-1779203277423-5e8xrf.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203277423-5e8xrf.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 1129260,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:10:07.422Z",
+      "indexItems": [
+        {
+          "id": "auto-1-colchon-y-base",
+          "title": "Colchón y Base",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-2-de-espuma",
+          "title": "de Espuma",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-3-de-resortes",
+          "title": "de Resortes",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203277321-o4lyx",
+      "title": "CATALOGO SABANAS FIORE",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 7,
+      "coverUrl": "/storage/covers/upload-1779203277321-o4lyx.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203277321-o4lyx.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 1649419,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:10:03.325Z",
+      "indexItems": [
+        {
+          "id": "auto-1-sabanas",
+          "title": "Sábanas",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-2-para-la-compra",
+          "title": "PARA LA COMPRA",
+          "pageNumber": 2,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-3-2-fundas-de-almohadas",
+          "title": "2 FUNDAS DE ALMOHADAS",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-3-blanco-3-plazas",
+          "title": "Blanco 3 PLAZAS",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-4-beige-3-plazas",
+          "title": "Beige 3 PLAZAS",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-5-gris-3-plazas",
+          "title": "Gris 3 PLAZAS",
+          "pageNumber": 5,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-6-ila-3-plazas",
+          "title": " ila 3 PLAZAS",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 9
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203277238-oj9wi1i",
+      "title": "CATALOGO LÍNEA HOTELERA 2025",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 10,
+      "coverUrl": "/storage/covers/upload-1779203277238-oj9wi1i.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203277238-oj9wi1i.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 1678313,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:09:56.019Z",
+      "indexItems": [
+        {
+          "id": "ocr-4-qu",
+          "title": "= QU",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "ocr",
+          "score": 14,
+          "ocrConfidence": 27
+        },
+        {
+          "id": "ocr-5-a-1-ancho",
+          "title": "A |1. ANCHO",
+          "pageNumber": 5,
+          "level": 0,
+          "source": "ocr",
+          "score": 14,
+          "ocrConfidence": 66
+        },
+        {
+          "id": "ocr-5-das-disponibles",
+          "title": "DAS DISPONIBLES",
+          "pageNumber": 5,
+          "level": 1,
+          "source": "ocr",
+          "score": 12,
+          "ocrConfidence": 55
+        },
+        {
+          "id": "ocr-5-2-lar",
+          "title": "2. LAR",
+          "pageNumber": 5,
+          "level": 1,
+          "source": "ocr",
+          "score": 12,
+          "ocrConfidence": 74
+        },
+        {
+          "id": "ocr-6-sabana-hotelera",
+          "title": "SÁBANA HOTELERA —",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "ocr",
+          "score": 10,
+          "ocrConfidence": 88
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203277157-mj8jqh",
+      "title": "CATALOGO DE ESPUMAS PREMIUM 2025",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 20,
+      "coverUrl": "/storage/covers/upload-1779203277157-mj8jqh.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203277157-mj8jqh.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 1837255,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:09:43.131Z",
+      "indexItems": [
+        {
+          "id": "auto-1-linea",
+          "title": "LÍNEA",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-3-personalizadas",
+          "title": "PERSONALIZADAS",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-4-nuestras-capacidades-incluyen",
+          "title": "NUESTRAS CAPACIDADES INCLUYEN",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-4-espumas-para-cada-necesidad",
+          "title": "ESPUMAS PARA CADA NECESIDAD",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-6-viscoelasticas",
+          "title": "VISCOELÁSTICAS",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-6-aplicaciones",
+          "title": "APLICACIONES",
+          "pageNumber": 6,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-7-termochange",
+          "title": "TERMOCHANGE",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-8-high-resilience-hr",
+          "title": "HIGH RESILIENCE (HR)",
+          "pageNumber": 8,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-8-garantizada-garantizada",
+          "title": "GARANTIZADA GARANTIZADA",
+          "pageNumber": 8,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-9-hipersoft",
+          "title": "HIPERSOFT",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-10-bioespuma",
+          "title": "BIOESPUMA",
+          "pageNumber": 10,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-11-aditivos",
+          "title": "ADITIVOS",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-12-potenciar-su-rendimiento-y-ofrecer-cualidades-di",
+          "title": "potenciar su rendimiento y ofrecer cualidades diferenciadoras que van",
+          "pageNumber": 12,
+          "level": 2,
+          "source": "auto",
+          "score": 6
+        },
+        {
+          "id": "auto-13-cobre",
+          "title": "COBRE",
+          "pageNumber": 13,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-14-aromas",
+          "title": "AROMAS",
+          "pageNumber": 14,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-14-biocrystal",
+          "title": "BIOCRYSTAL",
+          "pageNumber": 14,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-15-ensayos",
+          "title": "ENSAYOS",
+          "pageNumber": 15,
+          "level": 0,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-16-del-descanso",
+          "title": "DEL DESCANSO",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-16-centro-de",
+          "title": "CENTRO DE",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-16-investigacion",
+          "title": "INVESTIGACIÓN",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-17-densidad-aparente",
+          "title": "DENSIDAD APARENTE",
+          "pageNumber": 17,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-17-inen-iso-845-2014",
+          "title": "(INEN-ISO 845:2014)",
+          "pageNumber": 17,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-18-deformacion-remanente",
+          "title": "DEFORMACIÓN REMANENTE",
+          "pageNumber": 18,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-18-inen-iso-1856-2014",
+          "title": "(INEN-ISO 1856:2014)",
+          "pageNumber": 18,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-19-perdida-de-dureza-por-fatiga",
+          "title": "PÉRDIDA DE DUREZA POR FATIGA",
+          "pageNumber": 19,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203276988-vdnku6b",
+      "title": "CATÁLOGO MASCOTAS",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 6,
+      "coverUrl": "/storage/covers/upload-1779203276988-vdnku6b.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203276988-vdnku6b.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 2771224,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:09:38.871Z",
+      "indexItems": [
+        {
+          "id": "auto-2-pet-dreams",
+          "title": "Pet Dreams",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-3-sofa-para-mascotas",
+          "title": "SOFÁ PARA MASCOTAS",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-3-diseno-1",
+          "title": "DISEÑO 1",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-3-medidas-disponibles",
+          "title": "MEDIDAS DISPONIBLES",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-3-diseno-2",
+          "title": "DISEÑO 2",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-4-diseno-cafe",
+          "title": "DISEÑO CAFÉ",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-4-diseno-gris",
+          "title": "DISEÑO GRIS",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-4-cama-para-mascotas",
+          "title": "CAMA PARA MASCOTAS",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-5-eleanor-roosevelt",
+          "title": "Eleanor Roosevelt",
+          "pageNumber": 5,
+          "level": 1,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-6-y-conoce-mas",
+          "title": "Y CONOCE MÁS",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-6-escanea",
+          "title": "ESCANEA",
+          "pageNumber": 6,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203276776-7pgk07",
+      "title": "CATALOGO DE ESPUMAS 2024",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 30,
+      "coverUrl": "/storage/covers/upload-1779203276776-7pgk07.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203276776-7pgk07.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 4082537,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:09:34.171Z",
+      "indexItems": [
+        {
+          "id": "auto-3-industria-del-descanso-tapicera-textil-automotri",
+          "title": "industria del descanso, tapicera, textil, automotriz, entre otros, cumpliendo",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 6
+        },
+        {
+          "id": "auto-4-centro-de",
+          "title": "CENTRO DE",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-4-investigacion",
+          "title": "INVESTIGACIÓN",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-5-entre-los-diferentes-ensayos-que-se-realizan",
+          "title": "Entre los diferentes ensayos que se realizan",
+          "pageNumber": 5,
+          "level": 1,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-6-definiciones-ensayos",
+          "title": "DEFINICIONES ENSAYOS",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 20
+        },
+        {
+          "id": "auto-6-densidad-aparente",
+          "title": "DENSIDAD APARENTE",
+          "pageNumber": 6,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-6-dureza-por-indentacion",
+          "title": "DUREZA POR INDENTACIÓN",
+          "pageNumber": 6,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-7-deformacion-remanente",
+          "title": "DEFORMACIÓN REMANENTE",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-8-tipos-de-espuma",
+          "title": "TIPOS DE ESPUMA",
+          "pageNumber": 8,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-9-memory-foam",
+          "title": "MEMORY FOAM",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-9-beneficios",
+          "title": "BENEFICIOS",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-10-estandar-std",
+          "title": "ESTÁNDAR (STD)",
+          "pageNumber": 10,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-10-d12-std",
+          "title": "• D12 STD",
+          "pageNumber": 10,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-11-suave",
+          "title": "SUAVE",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-12-resistente-al-rasgado-rr",
+          "title": "RESISTENTE AL RASGADO (RR)",
+          "pageNumber": 12,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-12-textil-limpieza",
+          "title": "TEXTIL LIMPIEZA",
+          "pageNumber": 12,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-13-firme",
+          "title": "FIRME",
+          "pageNumber": 13,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-14-acustica",
+          "title": "ACÚSTICA",
+          "pageNumber": 14,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-14-medidas-espesor-cm",
+          "title": "MEDIDAS ESPESOR (cm)",
+          "pageNumber": 14,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-15-formatos-de-espuma",
+          "title": "FORMATOS DE ESPUMA",
+          "pageNumber": 15,
+          "level": 0,
+          "source": "auto",
+          "score": 20
+        },
+        {
+          "id": "auto-15-garantizada-i-d",
+          "title": "GARANTIZADA I D",
+          "pageNumber": 15,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-16-rollos-std",
+          "title": "ROLLOS (STD)",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-16-espesor-longitud",
+          "title": "ESPESOR LONGITUD",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-17-medidas-espesor",
+          "title": "MEDIDAS ESPESOR",
+          "pageNumber": 17,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-17-prensado",
+          "title": "PRENSADO",
+          "pageNumber": 17,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-18-recomendaciones",
+          "title": "RECOMENDACIONES",
+          "pageNumber": 18,
+          "level": 0,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-19-en-chaide-desarrollamos",
+          "title": "En CHAIDE desarrollamos",
+          "pageNumber": 19,
+          "level": 1,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-20-usos",
+          "title": "USOS",
+          "pageNumber": 20,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-20-colchones-muebles-jardin-textil",
+          "title": "COLCHONES MUEBLES JARDÍN TEXTIL",
+          "pageNumber": 20,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-20-empaques-limpieza-acustica-industrial",
+          "title": "EMPAQUES LIMPIEZA ACÚSTICA INDUSTRIAL",
+          "pageNumber": 20,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-21-caracteristicas",
+          "title": "CARACTERÍSTICAS",
+          "pageNumber": 21,
+          "level": 0,
+          "source": "auto",
+          "score": 21
+        },
+        {
+          "id": "auto-21-de-la-espuma",
+          "title": "DE LA ESPUMA",
+          "pageNumber": 21,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-22-tecnologia-de",
+          "title": "TECNOLOGÍA DE",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 20
+        },
+        {
+          "id": "auto-22-espuma-enrollada",
+          "title": "ESPUMA ENROLLADA",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-22-1-solo",
+          "title": "1 SOLO",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-22-150-se-necesitaria",
+          "title": "150 Se necesitaría",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-22-de-espumas-5",
+          "title": "de espumas 5",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-23-espaldar-espaldar",
+          "title": "ESPALDAR ESPALDAR",
+          "pageNumber": 23,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-23-mueble-de-gama-alta-mueble-de-gama-media",
+          "title": "MUEBLE DE GAMA ALTA MUEBLE DE GAMA MEDIA",
+          "pageNumber": 23,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-24-especificaciones-de-productos",
+          "title": "ESPECIFICACIONES DE PRODUCTOS",
+          "pageNumber": 24,
+          "level": 0,
+          "source": "auto",
+          "score": 22
+        },
+        {
+          "id": "auto-24-ficha-tecnica",
+          "title": "FICHA TÉCNICA",
+          "pageNumber": 24,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-24-d12-std-suave",
+          "title": "D12 STD SUAVE",
+          "pageNumber": 24,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-24-d15-rr-suave",
+          "title": "D15 RR SUAVE",
+          "pageNumber": 24,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-24-d15-frr-media",
+          "title": "D15 FRR MEDIA",
+          "pageNumber": 24,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-24-dureza",
+          "title": "DUREZA",
+          "pageNumber": 24,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-24-espuma-clasificacion",
+          "title": "Espuma Clasificación",
+          "pageNumber": 24,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-24-d17-rr-media",
+          "title": "D17 RR MEDIA",
+          "pageNumber": 24,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-24-d19-std-suave",
+          "title": "D19 STD SUAVE",
+          "pageNumber": 24,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-24-d20-rr-suave",
+          "title": "D20 RR SUAVE",
+          "pageNumber": 24,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-25-d12-std-bajo",
+          "title": "D12 STD BAJO",
+          "pageNumber": 25,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-25-d15-rr-bajo",
+          "title": "D15 RR BAJO",
+          "pageNumber": 25,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-25-traccion",
+          "title": "TRACCIÓN",
+          "pageNumber": 25,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-25-d17-rr-medio",
+          "title": "D17 RR MEDIO",
+          "pageNumber": 25,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-25-d19-std-bajo",
+          "title": "D19 STD BAJO",
+          "pageNumber": 25,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-25-d20-rr-medio",
+          "title": "D20 RR MEDIO",
+          "pageNumber": 25,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-26-d15-frr-bajo",
+          "title": "D15 FRR BAJO",
+          "pageNumber": 26,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-26-elongacion",
+          "title": "ELONGACIÓN",
+          "pageNumber": 26,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-27-d12-std-medio",
+          "title": "D12 STD MEDIO",
+          "pageNumber": 27,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-27-d15-rr-alto",
+          "title": "D15 RR ALTO",
+          "pageNumber": 27,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-27-d15-frr-medio",
+          "title": "D15 FRR MEDIO",
+          "pageNumber": 27,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-27-desgarro",
+          "title": "DESGARRO",
+          "pageNumber": 27,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-27-d19-std-medio",
+          "title": "D19 STD MEDIO",
+          "pageNumber": 27,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-27-d20-rr-alto",
+          "title": "D20 RR ALTO",
+          "pageNumber": 27,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-28-d15-rr-medio",
+          "title": "D15 RR MEDIO",
+          "pageNumber": 28,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-28-resiliencia",
+          "title": "RESILIENCIA",
+          "pageNumber": 28,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-29-fatiga",
+          "title": "FATIGA",
+          "pageNumber": 29,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-29-d20-rr-baja",
+          "title": "D20 RR BAJA",
+          "pageNumber": 29,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203276568-pdow4g",
+      "title": "CATALOGO BABY CHAIDE 2025",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 12,
+      "coverUrl": "/storage/covers/upload-1779203276568-pdow4g.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203276568-pdow4g.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 4303521,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:09:28.388Z",
+      "indexItems": [
+        {
+          "id": "auto-2-baby-chai-de",
+          "title": "BABY CHAi DE",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-2-colchon-antiasfixia",
+          "title": "Colchón Antiasfixia",
+          "pageNumber": 2,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-8-baby-chaide",
+          "title": "BABY CHAIDE",
+          "pageNumber": 8,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-8-babychaide",
+          "title": "• BABYCHAIDE",
+          "pageNumber": 8,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-8-disenos-nino",
+          "title": "DISEÑOS NIÑO",
+          "pageNumber": 8,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-8-para-colchon",
+          "title": "PARA COLCHÓN",
+          "pageNumber": 8,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-8-medidas-disponibles",
+          "title": "MEDIDAS DISPONIBLES",
+          "pageNumber": 8,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-9-1-sabana",
+          "title": "1 SÁBANA",
+          "pageNumber": 9,
+          "level": 2,
+          "source": "auto",
+          "score": 9
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203276308-mj02se",
+      "title": "CATALOGO SÁBANAS SUNSET",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 15,
+      "coverUrl": "/storage/covers/upload-1779203276308-mj02se.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203276308-mj02se.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 6756320,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:09:23.409Z",
+      "indexItems": [
+        {
+          "id": "auto-1-sabanas-s",
+          "title": "SABANAS S",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-4-sabanas",
+          "title": "SÁBANAS",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-11-sabanas-llanas",
+          "title": "SÁBANAS LLANAS",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 22
+        },
+        {
+          "id": "auto-11-plata-uva-arena",
+          "title": "PLATA UVA ARENA",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-11-moka-turquesa-blanca",
+          "title": "MOKA TURQUESA BLANCA",
+          "pageNumber": 11,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-12-linea-infantil",
+          "title": "LÍNEA INFANTIL",
+          "pageNumber": 12,
+          "level": 0,
+          "source": "auto",
+          "score": 22
+        },
+        {
+          "id": "auto-12-precio-precio-esquiador",
+          "title": "PRECIO PRECIO ESQUIADOR",
+          "pageNumber": 12,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-12-especial-especial",
+          "title": "ESPECIAL ESPECIAL",
+          "pageNumber": 12,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-12-hasta-agotar-stock",
+          "title": "HASTA AGOTAR STOCK",
+          "pageNumber": 12,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-13-mariposas",
+          "title": "MARIPOSAS",
+          "pageNumber": 13,
+          "level": 2,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-14-unicornio",
+          "title": "UNICORNIO",
+          "pageNumber": 14,
+          "level": 2,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-15-sabanas-incluyen-sabana-sobre-sabana-2-forros-de",
+          "title": "Sábanas incluyen: Sábana, sobre sábana, 2 forros de almohada",
+          "pageNumber": 15,
+          "level": 2,
+          "source": "auto",
+          "score": 7
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203276058-bixdge",
+      "title": "CATALOGO SÁBANAS ZAFIRO",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 25,
+      "coverUrl": "/storage/covers/upload-1779203276058-bixdge.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203276058-bixdge.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 7010049,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:09:17.171Z",
+      "indexItems": [
+        {
+          "id": "auto-1-sabanas",
+          "title": "SÁBANAS",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-5-diseno-diseno",
+          "title": "DISEÑO DISEÑO",
+          "pageNumber": 5,
+          "level": 1,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-10-ajuste-perfecto-para-colchones-chaide",
+          "title": "Ajuste perfecto para colchones chaide",
+          "pageNumber": 10,
+          "level": 0,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-22-sabanas-llanas",
+          "title": "SÁBANAS LLANAS",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 22
+        },
+        {
+          "id": "auto-22-plomo-habano",
+          "title": "PLOMO HABANO",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-22-turquesa-blanco",
+          "title": "TURQUESA BLANCO",
+          "pageNumber": 22,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-22-celeste-violeta",
+          "title": "CELESTE VIOLETA",
+          "pageNumber": 22,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-23-fundas-de-almohada",
+          "title": "FUNDAS DE ALMOHADA",
+          "pageNumber": 23,
+          "level": 0,
+          "source": "auto",
+          "score": 20
+        },
+        {
+          "id": "auto-25-estandar",
+          "title": "Estándar",
+          "pageNumber": 25,
+          "level": 0,
+          "source": "auto",
+          "score": 11
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203275693-b7y5p",
+      "title": "CATALOGO TELAS 2026",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 21,
+      "coverUrl": "/storage/covers/upload-1779203275693-b7y5p.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203275693-b7y5p.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 9447819,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:09:04.836Z",
+      "indexItems": [
+        {
+          "id": "auto-1-telas",
+          "title": "TELAS",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-2-nuevos-colores-en",
+          "title": "NUEVOS COLORES EN",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-2-tendencia-y-textura-de",
+          "title": "TENDENCIA Y TEXTURA DE",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-2-la-mas-alta-calidad",
+          "title": "LA MÁS ALTA CALIDAD",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-2-caracteristicas",
+          "title": "CARACTERÍSTICAS",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-2-repelente-de-liquidos",
+          "title": "REPELENTE DE LÍQUIDOS",
+          "pageNumber": 2,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-3-elementa",
+          "title": "ELEMENTA",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-10-vintage",
+          "title": "VINTAGE",
+          "pageNumber": 10,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-15-sense",
+          "title": "SENSE",
+          "pageNumber": 15,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203275276-owadsp",
+      "title": "CATALOGO ALMOHADAS Y COMPLEMENTOS 2025",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 58,
+      "coverUrl": "/storage/covers/upload-1779203275276-owadsp.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203275276-owadsp.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 11361243,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:08:58.503Z",
+      "indexItems": [
+        {
+          "id": "ocr-3-od",
+          "title": "——.... OD",
+          "pageNumber": 3,
+          "level": 2,
+          "source": "ocr",
+          "score": 8,
+          "ocrConfidence": 26
+        },
+        {
+          "id": "ocr-4-sereect-temp-carbon",
+          "title": "SEREECT TEMP CARBÓN",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "ocr",
+          "score": 15,
+          "ocrConfidence": 86
+        },
+        {
+          "id": "ocr-5-e-uu",
+          "title": "E Uu",
+          "pageNumber": 5,
+          "level": 0,
+          "source": "ocr",
+          "score": 12,
+          "ocrConfidence": 49
+        },
+        {
+          "id": "ocr-6-memadv-enamnadi",
+          "title": "MEMADV ENAMNADI",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "ocr",
+          "score": 15,
+          "ocrConfidence": 71
+        },
+        {
+          "id": "ocr-7-mking",
+          "title": "MKING",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "ocr",
+          "score": 15,
+          "ocrConfidence": 63
+        },
+        {
+          "id": "ocr-7-aemory-f",
+          "title": "AEMORY F",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "ocr",
+          "score": 15,
+          "ocrConfidence": 65
+        },
+        {
+          "id": "ocr-8-hua-del-cual",
+          "title": "hua) del cual",
+          "pageNumber": 8,
+          "level": 1,
+          "source": "ocr",
+          "score": 8,
+          "ocrConfidence": 87
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203274709-vzd1wc",
+      "title": "Catálogo Innovación 2023 - 2024",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 31,
+      "coverUrl": "/storage/covers/upload-1779203274709-vzd1wc.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203274709-vzd1wc.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 13792320,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:08:29.329Z",
+      "indexItems": [
+        {
+          "id": "auto-1-innovaciones",
+          "title": "INNOVACIONES",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-2-pillow-top-ng",
+          "title": "PILLOW TOP NG",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-2-continental",
+          "title": "CONTINENTAL",
+          "pageNumber": 2,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-3-3-intermedio-in",
+          "title": "3 INTERMEDIO IN",
+          "pageNumber": 3,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-3-estructura-estructura",
+          "title": "ESTRUCTURA ESTRUCTURA",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-3-interna-interna",
+          "title": "INTERNA INTERNA",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-3-nivel-n",
+          "title": "NIVEL N",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-3-de-confort-d",
+          "title": "DE CONFORT* D",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-3-libras-libras-individual-in",
+          "title": "LIBRAS LIBRAS INDIVIDUAL IN",
+          "pageNumber": 3,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-4-non-flip-ng",
+          "title": "NON FLIP NG",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-5-chaide-tela-tecnologia-pillow-proteccion-tela",
+          "title": "CHAIDE TELA TECNOLOGÍA PILLOW PROTECCIÓN TELA",
+          "pageNumber": 5,
+          "level": 2,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-6-tradicional-ng",
+          "title": "TRADICIONAL NG",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-7-190-190-peso-maximo-peso",
+          "title": "190 190 PESO MÁXIMO PESO",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-7-3-intermedio-inte",
+          "title": "3 INTERMEDIO INTE",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-7-5-libras-libras-individual-indi-v",
+          "title": "5 LIBRAS LIBRAS INDIVIDUAL INDI V",
+          "pageNumber": 7,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-7-nivel-nive",
+          "title": "NIVEL NIVE",
+          "pageNumber": 7,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-8-soft-y-memory-foam",
+          "title": "SOFT Y MEMORY FOAM",
+          "pageNumber": 8,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-9-memory-foam-soft",
+          "title": "MEMORY FOAM SOFT",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-9-220-peso-maximo",
+          "title": "220 PESO MÁXIMO",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-9-10-anos-de-garantia",
+          "title": "10 AÑOS DE GARANTÍA",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-9-confort-suave-confort-intermedio",
+          "title": "CONFORT* SUAVE CONFORT* INTERMEDIO",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-9-1-nivel",
+          "title": "1 NIVEL",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-9-2-firme",
+          "title": "2 FIRME",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-9-de-confort",
+          "title": "DE CONFORT*",
+          "pageNumber": 9,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-10-imperial",
+          "title": "IMPERIAL",
+          "pageNumber": 10,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-11-pillow-top-30",
+          "title": "PILLOW TOP 30",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 20
+        },
+        {
+          "id": "auto-11-180-peso-maximo",
+          "title": "180 PESO MÁXIMO",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-11-5-libras-individual",
+          "title": "5 LIBRAS INDIVIDUAL",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-11-8-anos-de-garantia",
+          "title": "8 AÑOS DE GARANTÍA",
+          "pageNumber": 11,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-11-estructura",
+          "title": "ESTRUCTURA",
+          "pageNumber": 11,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-12-chaide-pocket",
+          "title": "CHAIDE POCKET",
+          "pageNumber": 12,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-12-hypersoft",
+          "title": "HYPERSOFT",
+          "pageNumber": 12,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-13-5-220-peso-maximo",
+          "title": "5 220 PESO MÁXIMO",
+          "pageNumber": 13,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-13-3-de-confort",
+          "title": "3 DE CONFORT*",
+          "pageNumber": 13,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-14-suave-brisa",
+          "title": "SUAVE BRISA",
+          "pageNumber": 14,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-14-tradicional-c-o",
+          "title": "TRADICIONAL C O",
+          "pageNumber": 14,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-15-6-185-peso-maximo",
+          "title": "6 185 PESO MÁXIMO",
+          "pageNumber": 15,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-15-4-intermedio",
+          "title": "4 INTERMEDIO",
+          "pageNumber": 15,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-15-libras-individual",
+          "title": "LIBRAS INDIVIDUAL",
+          "pageNumber": 15,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-16-camas",
+          "title": "CAMAS",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-16-boston",
+          "title": "BOSTON",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-16-de-liquidos",
+          "title": "DE LÍQUIDOS",
+          "pageNumber": 16,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-16-soporte-tela",
+          "title": "SOPORTE TELA",
+          "pageNumber": 16,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-16-y-estabilidad-antideslizante",
+          "title": "Y ESTABILIDAD ANTIDESLIZANTE",
+          "pageNumber": 16,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-17-gran-berlin",
+          "title": "GRAN BERLÍN",
+          "pageNumber": 17,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-17-gran-b-9ia",
+          "title": "GRAN B 9IÃ",
+          "pageNumber": 17,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-18-durabilidad",
+          "title": "DURABILIDAD",
+          "pageNumber": 18,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-19-modular",
+          "title": "MODULAR",
+          "pageNumber": 19,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-19-cabecero-limpieza-facil",
+          "title": "Cabecero LIMPIEZA FÁCIL",
+          "pageNumber": 19,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-20-veladores",
+          "title": "VELADORES",
+          "pageNumber": 20,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-20-medida-disponible",
+          "title": "MEDIDA DISPONIBLE",
+          "pageNumber": 20,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-20-color-de-estructura-disponible",
+          "title": "COLOR DE ESTRUCTURA DISPONIBLE",
+          "pageNumber": 20,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-21-velador-montecarlo",
+          "title": "VELADOR MONTECARLO",
+          "pageNumber": 21,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-22-diseno-cafe",
+          "title": "DISEÑO CAFÉ",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-22-diseno-gris",
+          "title": "DISEÑO GRIS",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-22-cama-para-mascotas",
+          "title": "CAMA PARA MASCOTAS",
+          "pageNumber": 22,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-23-dark",
+          "title": "DARK",
+          "pageNumber": 23,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-23-posiciones-de-descanso",
+          "title": "POSICIONES DE DESCANSO",
+          "pageNumber": 23,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-23-bio-shield",
+          "title": "BIO SHIELD",
+          "pageNumber": 23,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-24-cojines",
+          "title": "COJINES",
+          "pageNumber": 24,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-24-sencillos-03",
+          "title": "SENCILLOS 03",
+          "pageNumber": 24,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-25-sofas-cama",
+          "title": "SOFÁS CAMA",
+          "pageNumber": 25,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-25-altura-repelente",
+          "title": "ALTURA REPELENTE",
+          "pageNumber": 25,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-25-de-cama-de-liquidos",
+          "title": "DE CAMA DE LÍQUIDOS",
+          "pageNumber": 25,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-25-desabrocha-las-haladeras-del",
+          "title": "Desabrocha las haladeras del",
+          "pageNumber": 25,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-26-191-cm-espuma-de-alta-repelente",
+          "title": "191 cm ESPUMA DE ALTA REPELENTE",
+          "pageNumber": 26,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-26-3-para-disfrutar-tu",
+          "title": "3 PARA DISFRUTAR TU",
+          "pageNumber": 26,
+          "level": 0,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-26-tecnologia-de-liquidos",
+          "title": "TECNOLOGÍA DE LÍQUIDOS",
+          "pageNumber": 26,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-26-facil-de-durabilidad",
+          "title": "FÁCIL DE DURABILIDAD",
+          "pageNumber": 26,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-26-transportar-t",
+          "title": "TRANSPORTAR T",
+          "pageNumber": 26,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-27-repelente-repe",
+          "title": "REPELENTE REPE",
+          "pageNumber": 27,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-27-durabilidad-dura",
+          "title": "DURABILIDAD DURA",
+          "pageNumber": 27,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-27-facil-fa",
+          "title": "FÁCIL FÁ",
+          "pageNumber": 27,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-27-limpieza-lim",
+          "title": "LIMPIEZA LIM",
+          "pageNumber": 27,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-27-54-cm",
+          "title": "54 cm",
+          "pageNumber": 27,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-28-sofa",
+          "title": "SOFÁ",
+          "pageNumber": 28,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-28-manual-y-electrico",
+          "title": "MANUAL Y ELÉCTRICO",
+          "pageNumber": 28,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-28-reclinable",
+          "title": "RECLINABLE",
+          "pageNumber": 28,
+          "level": 0,
+          "source": "auto",
+          "score": 15
+        },
+        {
+          "id": "auto-29-mecedora",
+          "title": "MECEDORA",
+          "pageNumber": 29,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-29-alma",
+          "title": "ALMA",
+          "pageNumber": 29,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-30-eleanor-roosevelt",
+          "title": "Eleanor Roosevelt",
+          "pageNumber": 30,
+          "level": 1,
+          "source": "auto",
+          "score": 9
+        },
+        {
+          "id": "auto-31-tecnico",
+          "title": "TÉCNICO",
+          "pageNumber": 31,
+          "level": 0,
+          "source": "auto",
+          "score": 14
+        },
+        {
+          "id": "auto-31-y-conoce-mas",
+          "title": "Y CONOCE MÁS",
+          "pageNumber": 31,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-31-escanea",
+          "title": "ESCANEA",
+          "pageNumber": 31,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203274211-vkhzl",
+      "title": "CATALOGO COBERTORES SUNSET",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 9,
+      "coverUrl": "/storage/covers/upload-1779203274211-vkhzl.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203274211-vkhzl.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 15167971,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:08:23.371Z",
+      "indexItems": [],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203273795-njefbg",
+      "title": "CATALOGO DE COLCHONES",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 83,
+      "coverUrl": "/storage/covers/upload-1779203273795-njefbg.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203273795-njefbg.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 15716693,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:08:15.607Z",
+      "indexItems": [
+        {
+          "id": "auto-1-colchones",
+          "title": "COLCHONES",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-4-linea-premium",
+          "title": "LÍNEA PREMIUM",
+          "pageNumber": 4,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-5-enfundados-individualmente-sentiras-un-descanso-",
+          "title": "enfundados individualmente, sentirás un descanso envolvente",
+          "pageNumber": 5,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-6-estructura-interna",
+          "title": "ESTRUCTURA INTERNA",
+          "pageNumber": 6,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-19-palace",
+          "title": "PALACE",
+          "pageNumber": 19,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-20-superficie-ocasionada-por-el-calor-corporal",
+          "title": "superficie ocasionada por el calor corporal",
+          "pageNumber": 20,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-23-",
+          "title": "\u001a\u001b \u0005\u0002\u0005\u0001\u0004\u0002\u0006\u0003\u0007",
+          "pageNumber": 23,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-26-j",
+          "title": "\u001d\u0016 J \u001f\"\u0012\",\u001c\u0012,\u0014\u0012\u001c\u001a\u0015\u0012\u0015,\u0015\u0016\u001c,#%\u0016 « \u001f,',\"\u0016\u0015%\u0014\u0016,\u0016\u001c,\u0016#$\" £ #\u0004",
+          "pageNumber": 26,
+          "level": 1,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-30-linea-chaide",
+          "title": "LÍNEA CHAIDE",
+          "pageNumber": 30,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        },
+        {
+          "id": "auto-41-continental",
+          "title": "CONTINENTAL",
+          "pageNumber": 41,
+          "level": 0,
+          "source": "auto",
+          "score": 17
+        },
+        {
+          "id": "auto-41-doble-box-top",
+          "title": "DOBLE BOX TOP",
+          "pageNumber": 41,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-41-de-confort",
+          "title": "DE CONFORT*",
+          "pageNumber": 41,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-41-intermedio",
+          "title": "INTERMEDIO",
+          "pageNumber": 41,
+          "level": 1,
+          "source": "auto",
+          "score": 11
+        },
+        {
+          "id": "auto-42-que-previene-alergias-y-brinda-un-descanso",
+          "title": "que previene alergias y brinda un descanso",
+          "pageNumber": 42,
+          "level": 1,
+          "source": "auto",
+          "score": 10
+        },
+        {
+          "id": "auto-43-pillow-top-ng",
+          "title": "PILLOW TOP NG",
+          "pageNumber": 43,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-44-medidas-disponibles",
+          "title": "MEDIDAS DISPONIBLES",
+          "pageNumber": 44,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-45-non-flip-ng",
+          "title": "NON FLIP NG",
+          "pageNumber": 45,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-46-medida-1-ancho-2-largo-3-altura",
+          "title": "MEDIDA 1. ANCHO 2. LARGO 3. ALTURA",
+          "pageNumber": 46,
+          "level": 2,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-47-tradicional-ng",
+          "title": "TRADICIONAL NG",
+          "pageNumber": 47,
+          "level": 0,
+          "source": "auto",
+          "score": 16
+        },
+        {
+          "id": "auto-48-continental-continental",
+          "title": "CONTINENTAL CONTINENTAL",
+          "pageNumber": 48,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-50--",
+          "title": "\u001e\u0005 \u0014\u0019\u001f\u0015/\u0017\"!/'%\u0015'\u0015 \u001d\u0019!'\"/\u0011%\"\u0013\u001c\u001d\u0019\u001f\u0018\u0003/#%\"'\u0019\u0017\u0017\u001d-!",
+          "pageNumber": 50,
+          "level": 2,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-63-suave-brisa",
+          "title": "SUAVE BRISA",
+          "pageNumber": 63,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-64-antiacaros-y-antibacterias",
+          "title": "antiácaros y antibacterias",
+          "pageNumber": 64,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        },
+        {
+          "id": "auto-74-y",
+          "title": "\u0002\u0018 \u0010 \u0005\u0015\u0005\u0018 \u0005\u0001\u0007\b \u0002\u0006\u0001\u0007\b \u0002\u0005 Y \u0012\u0012 \u0007\b",
+          "pageNumber": 74,
+          "level": 2,
+          "source": "auto",
+          "score": 8
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "upload-1779203272815-cyn7t",
+      "title": "CATALOGO EDREDONES ZAFIRO",
+      "description": "",
+      "category": "Descanso",
+      "pageCount": 10,
+      "coverUrl": "/storage/covers/upload-1779203272815-cyn7t.jpg",
+      "fileUrl": "/storage/pdfs/upload-1779203272815-cyn7t.pdf",
+      "tags": [],
+      "status": "ready",
+      "sourceType": "upload",
+      "visibility": "Público",
+      "fileSize": 21177169,
+      "isActive": true,
+      "updatedAt": "2026-05-19T15:08:09.991Z",
+      "indexItems": [
+        {
+          "id": "auto-1-tela-elaborada-con-microfibra-suave-al-tacto",
+          "title": "Tela elaborada con microfibra suave al tacto",
+          "pageNumber": 1,
+          "level": 0,
+          "source": "auto",
+          "score": 7
+        },
+        {
+          "id": "auto-8-edredon-zafiro-llano",
+          "title": "EDREDÓN ZÁFIRO LLANO",
+          "pageNumber": 8,
+          "level": 0,
+          "source": "auto",
+          "score": 18
+        },
+        {
+          "id": "auto-8-plomo",
+          "title": "PLOMO",
+          "pageNumber": 8,
+          "level": 1,
+          "source": "auto",
+          "score": 12
+        },
+        {
+          "id": "auto-9-turquesa",
+          "title": "TURQUESA",
+          "pageNumber": 9,
+          "level": 0,
+          "source": "auto",
+          "score": 13
+        }
+      ],
+      "linearized": true
+    },
+    {
+      "id": "doc-1",
+      "title": "Catálogo Colección Primavera 2026",
+      "description": "Descubre nuestra nueva línea de colchones, almohadas y accesorios.",
+      "category": "Catálogo",
+      "pageCount": 3,
+      "coverUrl": "https://images.unsplash.com/photo-1540518614846-7eded433c457?q=80&w=800&auto=format&fit=crop",
+      "fileUrl": "https://pdfobject.com/pdf/sample-3pp.pdf",
+      "tags": [
+        "Primavera",
+        "Colchones"
+      ],
+      "isFeatured": false,
+      "status": "ready",
+      "sourceType": "upload"
+    }
+  ],
+  "categories": [
+    {
+      "id": "catalog-descanso",
+      "name": "Descanso",
+      "slug": "descanso",
+      "description": "Colchones, camas y soluciones para dormir mejor.",
+      "icon": "Moon",
+      "imageUrl": "",
+      "order": 10,
+      "active": true,
+      "keywords": [
+        "descanso",
+        "colchon",
+        "colchones",
+        "cama",
+        "dormitorio",
+        "sueno"
+      ],
+      "createdAt": "2026-05-19T13:32:31.683Z",
+      "updatedAt": "2026-05-19T13:32:31.683Z"
+    },
+    {
+      "id": "catalog-muebles",
+      "name": "Muebles",
+      "slug": "muebles",
+      "description": "Muebles para sala, dormitorio y espacios de descanso.",
+      "icon": "Sofa",
+      "imageUrl": "",
+      "order": 20,
+      "active": true,
+      "keywords": [
+        "muebles",
+        "mueble",
+        "sala",
+        "sofa",
+        "cabecera"
+      ],
+      "createdAt": "2026-05-19T13:32:31.683Z",
+      "updatedAt": "2026-05-19T13:32:31.683Z"
+    },
+    {
+      "id": "catalog-complementos",
+      "name": "Complementos",
+      "slug": "complementos",
+      "description": "Textiles y accesorios como sabanas, toallas, almohadas y protectores.",
+      "icon": "Package",
+      "imageUrl": "",
+      "order": 30,
+      "active": true,
+      "keywords": [
+        "complementos",
+        "complemento",
+        "textiles",
+        "textil",
+        "sabanas",
+        "toallas",
+        "cobertores",
+        "accesorios",
+        "almohadas",
+        "protectores"
+      ],
+      "createdAt": "2026-05-19T13:32:31.683Z",
+      "updatedAt": "2026-05-19T13:32:31.683Z"
+    },
+    {
+      "id": "catalog-hoteles",
+      "name": "Hoteles",
+      "slug": "hoteles",
+      "description": "Catalogos y productos para proyectos hoteleros.",
+      "icon": "Hotel",
+      "imageUrl": "",
+      "order": 40,
+      "active": true,
+      "keywords": [
+        "hoteles",
+        "hotel",
+        "hotelera",
+        "hotelero",
+        "hospitality"
+      ],
+      "createdAt": "2026-05-19T13:32:31.683Z",
+      "updatedAt": "2026-05-19T13:32:31.683Z"
+    },
+    {
+      "id": "catalog-espumas",
+      "name": "Espumas",
+      "slug": "espumas",
+      "description": "Espumas, confort tecnico y materiales de soporte.",
+      "icon": "Waves",
+      "imageUrl": "",
+      "order": 50,
+      "active": true,
+      "keywords": [
+        "espumas",
+        "espuma",
+        "foam",
+        "memory foam"
+      ],
+      "createdAt": "2026-05-19T13:32:31.683Z",
+      "updatedAt": "2026-05-19T13:32:31.683Z"
+    }
+  ],
+  "promotionalBanner": {
+    "imageUrl": "/storage/banners/banner-1781800467049-ns7paj.png",
+    "mobileImageUrl": "/storage/banners/banner-1781802763314-b7i6gz.png",
+    "mobileIsActive": true,
+    "altText": "Banner promocional de CATALOGO TÉCNICO 2025",
+    "targetUrl": "www.chaide.com/",
+    "isActive": true,
+    "updatedAt": "2026-06-19T02:20:52.811Z"
+  }
+}

@@ -9,7 +9,11 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+    }).catch(() => undefined);
     logout();
     navigate('/login');
   };

@@ -56,11 +56,26 @@ async function maybeLinearizePdf(filePath: string) {
 // Write endpoints are disabled unless ADMIN_TOKEN is configured. Production
 // deployments must keep this value in the server environment.
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+
+function readCookie(req: any, name: string) {
+  const cookies = String(req.headers.cookie || "").split(";");
+  for (const cookie of cookies) {
+    const [key, ...valueParts] = cookie.trim().split("=");
+    if (key === name) return decodeURIComponent(valueParts.join("="));
+  }
+  return "";
+}
+
 function requireAdmin(req: any, res: any, next: any) {
   if (!ADMIN_TOKEN) {
     return res.status(503).json({ error: "Administración no configurada" });
   }
-  const provided = req.headers["x-admin-token"] || req.query.adminToken;
+  const provided =
+    req.headers["x-admin-token"] ||
+    req.query.adminToken ||
+    readCookie(req, "chaide_admin");
   if (provided === ADMIN_TOKEN) return next();
   return res.status(401).json({ error: "No autorizado" });
 }
@@ -126,9 +141,27 @@ let bucket: any = null;
 
 // Create directories robustly
 const ROOT_DIR = process.cwd();
-// Force local data directory for all storage to make it self-contained
-const BASE_STORAGE = path.join(ROOT_DIR, "data", "uploads");
+const SEED_DATA_DIR = path.join(ROOT_DIR, "data");
+const DATA_DIR = path.resolve(process.env.DATA_DIR || SEED_DATA_DIR);
+const BASE_STORAGE = path.join(DATA_DIR, "uploads");
 const LEGACY_STORAGE = path.join(ROOT_DIR, "storage");
+
+function seedPersistentData() {
+  if (DATA_DIR === SEED_DATA_DIR) return;
+
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  const entries = ["db.json", "uploads", "search-index"];
+
+  for (const entry of entries) {
+    const source = path.join(SEED_DATA_DIR, entry);
+    const destination = path.join(DATA_DIR, entry);
+    if (!fs.existsSync(source) || fs.existsSync(destination)) continue;
+    fs.cpSync(source, destination, { recursive: true });
+    console.log(`[DATA SEED] Copied ${entry} to persistent storage.`);
+  }
+}
+
+seedPersistentData();
 
 function isWithinStorageRoot(filePath: string) {
   return [BASE_STORAGE, LEGACY_STORAGE].some((root) => {
@@ -169,7 +202,7 @@ function createSearchSnippet(originalText: string, normalizedQuery: string, matc
 
 // Pre-extracted page text is stored OUTSIDE db.json, one small file per
 // document, so db.json stays light and every saveDb() write stays cheap.
-const SEARCH_INDEX_DIR = path.join(process.cwd(), "data", "search-index");
+const SEARCH_INDEX_DIR = path.join(DATA_DIR, "search-index");
 type PersistedIndex = { stamp: string; pages: { pageNumber: number; text: string }[] };
 function searchIndexPath(docId: string) {
   return path.join(SEARCH_INDEX_DIR, `${encodeURIComponent(docId)}.json`);
@@ -314,7 +347,7 @@ const STORAGE_DIRS = [
   path.join(BASE_STORAGE, "thumbnails"),
   path.join(BASE_STORAGE, "temp"),
   path.join(BASE_STORAGE, "categories"),
-  path.join(ROOT_DIR, "data"),
+  DATA_DIR,
   path.join(BASE_STORAGE, "chunks")
 ];
 
@@ -760,8 +793,47 @@ async function startServer() {
   app.use(express.json({ limit: "30mb" }));
   app.use(express.urlencoded({ extended: true, limit: "30mb" }));
 
+  app.post("/api/auth/login", (req, res) => {
+    if (!ADMIN_TOKEN || !ADMIN_USERNAME || !ADMIN_PASSWORD) {
+      return res.status(503).json({ error: "Administración no configurada" });
+    }
+
+    const username = String(req.body?.username || "").trim().toLowerCase();
+    const password = String(req.body?.password || "");
+    if (username !== ADMIN_USERNAME.toLowerCase() || password !== ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Credenciales incorrectas" });
+    }
+
+    res.setHeader(
+      "Set-Cookie",
+      `chaide_admin=${encodeURIComponent(ADMIN_TOKEN)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
+    );
+    return res.json({
+      user: {
+        id: "admin",
+        email: username.includes("@") ? username : `${username}@chaide.local`,
+        name: "Administrador Chaide",
+        role: "admin",
+      },
+    });
+  });
+
+  app.get("/api/auth/session", (req, res) => {
+    const authenticated =
+      Boolean(ADMIN_TOKEN) && readCookie(req, "chaide_admin") === ADMIN_TOKEN;
+    return res.json({ authenticated });
+  });
+
+  app.post("/api/auth/logout", (_req, res) => {
+    res.setHeader(
+      "Set-Cookie",
+      `chaide_admin=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
+    );
+    return res.json({ ok: true });
+  });
+
   // Debug logger
-  const logFile = path.resolve("data/logs.txt");
+  const logFile = path.join(DATA_DIR, "logs.txt");
   app.use((req, res, next) => {
     if (req.url.startsWith('/api')) {
       const logEntry = `[API] ${req.method} ${req.url} - ${new Date().toISOString()}\n`;
@@ -775,7 +847,7 @@ async function startServer() {
 
   // Database persistent storage using fs
   let memoryDb: any = { documents: [], categories: [], promotionalBanner: null };
-  const dbPath = path.join(ROOT_DIR, "data", "db.json");
+  const dbPath = path.join(DATA_DIR, "db.json");
   
   const loadFromFirestore = async () => {
     try {

@@ -20,6 +20,35 @@ export default function LoginPage() {
     setError(null);
     setIsLoading(true);
 
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        throw new Error(result?.error || 'No se pudo iniciar sesión.');
+      }
+
+      const result = await response.json();
+      setSuccess(true);
+      window.setTimeout(() => {
+        login(result.user);
+        navigate('/admin');
+      }, 700);
+      return;
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Credenciales incorrectas.');
+      setIsLoading(false);
+      return;
+    }
+
     // Simulate small delay for premium feel
     await new Promise(resolve => setTimeout(resolve, 1000));
 

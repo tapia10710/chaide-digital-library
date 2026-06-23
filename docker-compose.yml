@@ -1,0 +1,33 @@
+# ============================================================
+#  Chaide Biblioteca Digital — montaje en 1 comando
+#
+#  1) Copia ".env.docker.example" a ".env" y edítalo (clave/token).
+#  2) Ejecuta:   docker compose up -d --build
+#  3) Abre:      http://IP-DEL-SERVIDOR:8080   (o el HOST_PORT que pongas)
+#
+#  Los datos (PDFs, configuración) quedan en el volumen "chaide-data" y
+#  sobreviven a reinicios y actualizaciones.
+# ============================================================
+services:
+  web:
+    build: .
+    image: chaide-biblioteca-digital:latest
+    container_name: chaide-biblioteca
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8080}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATA_DIR: /data
+      # false = HTTP interno (la sesión funciona sin HTTPS).
+      # true  = solo si lo sirves detrás de HTTPS.
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en el archivo .env}"
+      ADMIN_TOKEN: "${ADMIN_TOKEN:?Define ADMIN_TOKEN en el archivo .env}"
+    volumes:
+      - chaide-data:/data
+
+volumes:
+  chaide-data:

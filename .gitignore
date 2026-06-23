@@ -7,11 +7,14 @@ coverage/
 *.log
 .env*
 !.env.example
+!.env.docker.example
 # Runtime data & logs
 data/logs.txt
 data/logs/
 # Relocated one-off patch scripts (kept out of the tree)
 _legacy_scripts/
+# Handoff package for IT (contains credentials + large zip; do not commit)
+ENTREGA-SISTEMAS/
 # Generated only for the GitHub Pages build
 public/storage/
 public/static-data/

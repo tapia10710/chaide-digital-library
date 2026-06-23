@@ -59,6 +59,13 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 
+// The session cookie is marked Secure (HTTPS-only) in production by default.
+// For an INTERNAL server reachable only over plain HTTP, set COOKIE_SECURE=false
+// so admin login works without HTTPS. Default: Secure when NODE_ENV=production.
+const COOKIE_SECURE = typeof process.env.COOKIE_SECURE === "string"
+  ? process.env.COOKIE_SECURE.toLowerCase() === "true"
+  : process.env.NODE_ENV === "production";
+
 function readCookie(req: any, name: string) {
   const cookies = String(req.headers.cookie || "").split(";");
   for (const cookie of cookies) {
@@ -806,7 +813,7 @@ async function startServer() {
 
     res.setHeader(
       "Set-Cookie",
-      `chaide_admin=${encodeURIComponent(ADMIN_TOKEN)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
+      `chaide_admin=${encodeURIComponent(ADMIN_TOKEN)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${COOKIE_SECURE ? "; Secure" : ""}`,
     );
     return res.json({
       user: {
@@ -827,7 +834,7 @@ async function startServer() {
   app.post("/api/auth/logout", (_req, res) => {
     res.setHeader(
       "Set-Cookie",
-      `chaide_admin=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
+      `chaide_admin=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${COOKIE_SECURE ? "; Secure" : ""}`,
     );
     return res.json({ ok: true });
   });

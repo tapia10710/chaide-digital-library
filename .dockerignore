@@ -1,0 +1,16 @@
+# No enviar al build de Docker (se reconstruyen o no se necesitan):
+node_modules
+.git
+dist
+dist-pages
+_legacy_scripts
+ENTREGA-SISTEMAS
+*.log
+build.log
+.env
+.env.local
+data/logs.txt
+data/logs
+data/search-index
+npm-debug.log*
+.DS_Store

@@ -78,3 +78,7 @@ docker compose up -d --build
 
 Antes de arrancar, editar `.env` y definir credenciales nuevas. Los datos deben
 guardarse en un volumen persistente. Nunca se debe subir el archivo `.env`.
+
+Para Railway, el repositorio incluye `railway.json`, un `Dockerfile` y la
+plantilla `.env.railway.example`. Los pasos completos estan en
+[`DESPLIEGUE-ADMINISTRATIVO.md`](DESPLIEGUE-ADMINISTRATIVO.md).

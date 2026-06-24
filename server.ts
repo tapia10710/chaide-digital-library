@@ -9,6 +9,7 @@ import { promisify } from "util";
 import { pipeline } from "stream/promises";
 import "dotenv/config";
 import { catalogCategories } from "./src/lib/catalogCategories";
+import { startDriveCatalogSync } from "./lib/driveSync";
 
 const pexecFile = promisify(execFile);
 
@@ -149,7 +150,13 @@ let bucket: any = null;
 // Create directories robustly
 const ROOT_DIR = process.cwd();
 const SEED_DATA_DIR = path.join(ROOT_DIR, "data");
-const DATA_DIR = path.resolve(process.env.DATA_DIR || SEED_DATA_DIR);
+// Railway exposes the selected volume path automatically. DATA_DIR remains
+// available as an explicit override for Docker and other hosting providers.
+const DATA_DIR = path.resolve(
+  process.env.DATA_DIR ||
+  process.env.RAILWAY_VOLUME_MOUNT_PATH ||
+  SEED_DATA_DIR,
+);
 const BASE_STORAGE = path.join(DATA_DIR, "uploads");
 const LEGACY_STORAGE = path.join(ROOT_DIR, "storage");
 
@@ -1964,6 +1971,12 @@ async function startServer() {
   };
 
   await repairDatabase();
+  startDriveCatalogSync({
+    baseStorage: BASE_STORAGE,
+    getDb,
+    saveDb,
+    ensureSearchIndex,
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

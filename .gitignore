@@ -8,6 +8,8 @@ coverage/
 .env*
 !.env.example
 !.env.docker.example
+!.env.railway.example
+!.env.server.example
 # Runtime data & logs
 data/logs.txt
 data/logs/

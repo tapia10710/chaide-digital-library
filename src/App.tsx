@@ -24,10 +24,13 @@ function RouteFallback() {
 
 function App() {
   const Router = isStaticSite ? HashRouter : BrowserRouter;
+  const routerProps = isStaticSite
+    ? {}
+    : { basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/' };
 
   return (
     <ReactLenis root>
-      <Router>
+      <Router {...routerProps}>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Main app wrapper with Sidebar */}

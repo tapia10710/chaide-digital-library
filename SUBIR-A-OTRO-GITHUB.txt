@@ -1,0 +1,73 @@
+==========================================================================
+ PLAN DE IMPLEMENTACION WEB - SUBIR A OTRO GITHUB
+==========================================================================
+
+La carpeta del proyecto ya contiene las reglas necesarias para separar el
+codigo de archivos locales, dependencias, compilaciones y claves.
+
+ARCHIVOS QUE SI DEBEN SUBIRSE
+-----------------------------
+- Todos los archivos que aparecen al ejecutar: git ls-files
+- Los cambios nuevos que aparezcan al ejecutar: git status
+
+ARCHIVOS QUE NO DEBEN SUBIRSE
+-----------------------------
+- .git/
+- .env
+- node_modules/
+- dist/
+- dist-pages/
+- ENTREGA-SISTEMAS/
+- Archivos *.log
+- Paquetes ZIP o RAR
+
+DESDE LA CARPETA PROYECTO-LISTO-PARA-GITHUB
+-------------------------------------------
+1. Crear un repositorio vacio en la nueva cuenta de GitHub.
+2. Abrir una terminal dentro de PROYECTO-LISTO-PARA-GITHUB.
+3. Ejecutar:
+
+   git init -b main
+   git add .
+   git commit -m "Publicar Chaide Biblioteca Digital"
+   git remote add origin https://github.com/USUARIO/REPOSITORIO.git
+   git push -u origin main
+
+4. En el nuevo GitHub abrir:
+   Settings > Pages > Build and deployment
+
+5. Seleccionar:
+   GitHub Actions
+
+6. Esperar a que termine el proceso "Deploy GitHub Pages".
+
+La ruta de GitHub Pages se calcula automaticamente. No importa si el nuevo
+repositorio tiene otro nombre.
+
+SI SE USA LA CARPETA ORIGINAL CON HISTORIAL GIT
+-----------------------------------------------
+En lugar de "git init" y "git remote add", solamente ejecutar:
+
+   git remote set-url origin https://github.com/USUARIO/REPOSITORIO.git
+   git push -u origin main
+
+IMPORTANTE
+----------
+- GitHub Pages muestra la biblioteca, los catalogos y los PDF, pero es de solo
+  lectura.
+- La subida de archivos desde /admin requiere un servidor con backend, como
+  Railway, Google Cloud, un VPS o un servidor interno.
+- Para el backend se deben crear valores nuevos de ADMIN_PASSWORD y
+  ADMIN_TOKEN.
+- Nunca subir el archivo .env real.
+
+VERIFICACION ANTES DE SUBIR
+---------------------------
+   npm ci
+   npm run lint
+   npm run build
+   npm run build:pages
+
+El repositorio completo ocupa aproximadamente 175 MB. Ningun archivo individual
+supera 100 MB, por lo que puede subirse con Git desde una terminal.
+==========================================================================

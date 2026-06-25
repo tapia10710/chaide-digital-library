@@ -16,6 +16,10 @@ services:
       - GOOGLE_SA_JSON=${GOOGLE_SA_JSON}
       - DRIVE_CATALOG_FOLDER_ID=${DRIVE_CATALOG_FOLDER_ID}
       - DRIVE_SYNC_INTERVAL_MINUTES=${DRIVE_SYNC_INTERVAL_MINUTES:-10}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - COOKIE_SECURE=${COOKIE_SECURE:-true}
     volumes:
       - catalogos_data:/app/data
       - catalogos_storage:/app/storage

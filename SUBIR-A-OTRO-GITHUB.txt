@@ -57,6 +57,8 @@ IMPORTANTE
   lectura.
 - La subida de archivos desde /admin requiere un servidor con backend, como
   Railway, Google Cloud, un VPS o un servidor interno.
+- Para Railway, seguir DESPLIEGUE-ADMINISTRATIVO.md despues de subir el
+  repositorio.
 - Para el backend se deben crear valores nuevos de ADMIN_PASSWORD y
   ADMIN_TOKEN.
 - Nunca subir el archivo .env real.

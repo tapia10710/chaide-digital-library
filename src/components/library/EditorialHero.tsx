@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import useResizeObserver from 'use-resize-observer';
@@ -62,6 +62,31 @@ function getHeroCategoryLabel(doc: DocumentDef, categories: ReturnType<typeof us
     categories.find((category) => normalizeCatalogText(category.name) === normalizeCatalogText(doc.category || ''));
 
   return editableCategory?.name || matchedStaticCategory?.label || cleanText(doc.category, 'Catalogo');
+}
+
+function HeroCoverImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed || !src) {
+    return (
+      <div
+        className="catalog-cover-image catalog-cover-image--placeholder"
+        aria-label={alt}
+        style={{
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(160deg, #111 0%, #2a2a2a 50%, #3a3a3a 100%)',
+        }}
+      />
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="catalog-cover-image"
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 export default function EditorialHero({ doc }: EditorialHeroProps) {
@@ -202,7 +227,7 @@ export default function EditorialHero({ doc }: EditorialHeroProps) {
               <strong>{displayTitle}</strong>
             </div>
             <div className="catalog-cover-image-wrap">
-              <img src={doc.coverUrl} alt={doc.title} className="catalog-cover-image" />
+              <HeroCoverImage src={doc.coverUrl} alt={doc.title} />
             </div>
             <div className="catalog-cover-bottom">
               <strong>{coverMeta}</strong>

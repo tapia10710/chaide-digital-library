@@ -8,7 +8,8 @@ import { promisify } from "util";
 import { pipeline } from "stream/promises";
 import "dotenv/config";
 import { catalogCategories } from "./src/lib/catalogCategories";
-import { startDriveCatalogSync } from "./lib/driveSync";
+import { startDriveCatalogSync, saveDriveThumbnail, fetchAndCacheDriveThumbnail } from "./lib/driveSync";
+import { google } from "googleapis";
 
 const pexecFile = promisify(execFile);
 
@@ -974,6 +975,71 @@ async function startServer() {
   };
   migrateBase64Covers();
 
+  // Migrate legacy /api/drive/thumbnail/:fileId coverUrls to permanent local files.
+  // Runs once at startup, non-blocking.
+  const migrateDriveThumbnailUrls = async () => {
+    const liveDb = getDb();
+    const pending = (liveDb.documents || []).filter(
+      (d: any) =>
+        typeof d.coverUrl === "string" && d.coverUrl.startsWith("/api/drive/thumbnail/"),
+    );
+    if (pending.length === 0) return;
+    console.log(`[COVER MIGRATE] Migrating ${pending.length} drive thumbnail URL(s)...`);
+
+    const rawCredentials = process.env.GOOGLE_SA_JSON?.trim();
+    let drive: any = null;
+    if (rawCredentials) {
+      try {
+        const credentials = JSON.parse(rawCredentials);
+        const auth = new google.auth.GoogleAuth({
+          credentials,
+          scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+        });
+        drive = google.drive({ version: "v3", auth });
+      } catch (e: any) {
+        console.warn("[COVER MIGRATE] Could not init Drive auth:", e?.message || e);
+      }
+    }
+
+    const coversDir = path.join(BASE_STORAGE, "covers");
+    let changed = false;
+
+    for (const doc of pending) {
+      const fileId = doc.coverUrl.replace("/api/drive/thumbnail/", "").split("?")[0].split("/")[0];
+      if (!fileId) continue;
+      const coverFileName = `drive-${fileId}.jpg`;
+      const localPath = path.join(coversDir, coverFileName);
+      const permanentUrl = `/storage/covers/${coverFileName}`;
+
+      if (fs.existsSync(localPath)) {
+        doc.coverUrl = permanentUrl;
+        changed = true;
+        continue;
+      }
+
+      if (drive) {
+        try {
+          const saved = await fetchAndCacheDriveThumbnail(drive, fileId, localPath);
+          if (saved) {
+            doc.coverUrl = permanentUrl;
+            changed = true;
+          }
+        } catch (e: any) {
+          console.warn(`[COVER MIGRATE] Skipped ${doc.id}: ${e?.message || e}`);
+        }
+      }
+    }
+
+    if (changed) {
+      saveDb(liveDb);
+      console.log("[COVER MIGRATE] Done.");
+    }
+  };
+
+  // Fire migration in the background after a short delay so it doesn't block startup.
+  setTimeout(() => migrateDriveThumbnailUrls().catch((e) =>
+    console.warn("[COVER MIGRATE] Error:", e?.message || e)), 5000);
+
   // Build (if needed) the server-side search index for a document and persist
   // the extracted page text to a per-doc file. This means /api/search and the
   // viewer never have to re-parse the whole PDF on every query / open.
@@ -1838,6 +1904,72 @@ async function startServer() {
       if (!res.headersSent) {
         res.status(502).json({ error: "Failed to fetch PDF: " + (error.response?.statusText || error.message) });
       }
+    }
+  });
+
+  // Drive thumbnail proxy + cache
+  // Serves a locally cached cover for a Drive file.
+  // On first request, fetches the thumbnail from Drive via the service account,
+  // caches it to /storage/covers/drive-{fileId}.jpg, and updates db.coverUrl.
+  app.get("/api/drive/thumbnail/:fileId", async (req, res) => {
+    const { fileId } = req.params;
+    if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) {
+      return res.status(400).json({ error: "Invalid fileId" });
+    }
+
+    const coverFileName = `drive-${fileId}.jpg`;
+    const coversDir = path.join(BASE_STORAGE, "covers");
+    const localPath = path.join(coversDir, coverFileName);
+    const permanentUrl = `/storage/covers/${coverFileName}`;
+
+    // Fast path: already cached locally
+    if (fs.existsSync(localPath)) {
+      // Opportunistically update any db record still pointing at the old URL
+      const liveDb = getDb();
+      let changed = false;
+      for (const doc of liveDb.documents || []) {
+        if (typeof doc.coverUrl === "string" && doc.coverUrl.includes(`/api/drive/thumbnail/${fileId}`)) {
+          doc.coverUrl = permanentUrl;
+          changed = true;
+        }
+      }
+      if (changed) saveDb(liveDb);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      return res.sendFile(localPath);
+    }
+
+    // Slow path: fetch from Drive API
+    const rawCredentials = process.env.GOOGLE_SA_JSON?.trim();
+    if (!rawCredentials) {
+      return res.status(404).json({ error: "Google credentials not configured" });
+    }
+
+    try {
+      const credentials = JSON.parse(rawCredentials);
+      const auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+      });
+      const drive = google.drive({ version: "v3", auth });
+      const saved = await fetchAndCacheDriveThumbnail(drive, fileId, localPath);
+      if (!saved) return res.status(404).json({ error: "No thumbnail available for this file" });
+
+      // Update db records still using the old URL
+      const liveDb = getDb();
+      let changed = false;
+      for (const doc of liveDb.documents || []) {
+        if (typeof doc.coverUrl === "string" && doc.coverUrl.includes(`/api/drive/thumbnail/${fileId}`)) {
+          doc.coverUrl = permanentUrl;
+          changed = true;
+        }
+      }
+      if (changed) saveDb(liveDb);
+
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      return res.sendFile(localPath);
+    } catch (e: any) {
+      console.error("[DRIVE THUMBNAIL]", e?.message || e);
+      return res.status(500).json({ error: "Failed to fetch thumbnail" });
     }
   });
 

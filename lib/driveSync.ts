@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import https from "node:https";
+import http from "node:http";
 import path from "node:path";
 import { google } from "googleapis";
 
@@ -17,13 +19,14 @@ type DriveCatalogFile = {
   md5Checksum?: string | null;
   size?: string | null;
   category: string;
+  thumbnailLink?: string | null;
 };
 
 function normalizeName(value: string) {
   return value
     .replace(/\.pdf$/i, "")
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/gi, " ")
     .trim()
     .toLowerCase();
@@ -55,7 +58,7 @@ async function listDriveCatalogs(drive: any, rootFolderId: string) {
     do {
       const response = await drive.files.list({
         q: `'${folder.id.replace(/'/g, "\\'")}' in parents and trashed = false`,
-        fields: "nextPageToken,files(id,name,mimeType,description,modifiedTime,md5Checksum,size)",
+        fields: "nextPageToken,files(id,name,mimeType,description,modifiedTime,md5Checksum,size,thumbnailLink)",
         pageSize: 1000,
         pageToken,
         supportsAllDrives: true,
@@ -79,6 +82,7 @@ async function listDriveCatalogs(drive: any, rootFolderId: string) {
           md5Checksum: file.md5Checksum,
           size: file.size,
           category: folder.category,
+          thumbnailLink: file.thumbnailLink,
         });
       }
       pageToken = response.data.nextPageToken || undefined;
@@ -116,6 +120,65 @@ async function downloadDriveFile(drive: any, fileId: string, destination: string
 
   await fs.promises.rm(destination, { force: true });
   await fs.promises.rename(temporaryPath, destination);
+}
+
+// Downloads a Drive thumbnail URL and saves it locally.
+// Drive returns thumbnailLink as a short-lived public URL; we cache it
+// so /storage/covers/ can serve it forever without calling Drive again.
+export async function saveDriveThumbnail(
+  thumbnailLink: string | null | undefined,
+  destination: string,
+): Promise<boolean> {
+  if (!thumbnailLink) return false;
+  try {
+    // Request a larger thumbnail (Drive accepts =s800 suffix)
+    const url = thumbnailLink.replace(/[?&]sz=s\d+/, "").replace(/=s\d+$/, "") + "=s800";
+    await new Promise<void>((resolve, reject) => {
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      const proto = url.startsWith("https") ? https : http;
+      const tmp = `${destination}.part`;
+      const file = fs.createWriteStream(tmp);
+      proto
+        .get(url, (res) => {
+          if (!res.statusCode || res.statusCode >= 400) {
+            file.destroy();
+            fs.unlink(tmp, () => {});
+            reject(new Error(`HTTP ${res.statusCode}`));
+            return;
+          }
+          res.pipe(file);
+          file.on("finish", () =>
+            file.close(() => {
+              fs.rename(tmp, destination, (err) => (err ? reject(err) : resolve()));
+            }),
+          );
+          file.on("error", (e) => { fs.unlink(tmp, () => {}); reject(e); });
+        })
+        .on("error", (e) => { fs.unlink(tmp, () => {}); reject(e); });
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Fetches a Drive file's thumbnailLink via the API and saves it locally.
+// Used by the /api/drive/thumbnail/:fileId endpoint as a lazy fallback.
+export async function fetchAndCacheDriveThumbnail(
+  drive: any,
+  fileId: string,
+  destination: string,
+): Promise<boolean> {
+  try {
+    const res = await drive.files.get({
+      fileId,
+      fields: "thumbnailLink",
+      supportsAllDrives: true,
+    });
+    return saveDriveThumbnail(res.data.thumbnailLink, destination);
+  } catch {
+    return false;
+  }
 }
 
 function ensureDriveCategory(db: any, categoryName: string) {
@@ -205,6 +268,29 @@ export function startDriveCatalogSync(options: DriveSyncOptions) {
           await downloadDriveFile(drive, file.id, destination);
         }
 
+        // Resolve cover: prefer existing local cover, then fetch from Drive thumbnail.
+        const existingCover = document?.coverUrl;
+        const hasPermanentCover =
+          typeof existingCover === "string" &&
+          existingCover.startsWith("/storage/covers/") &&
+          !existingCover.startsWith("/api/drive/thumbnail/");
+
+        let coverUrl = existingCover || "";
+        if (!hasPermanentCover) {
+          const coverFileName = `drive-${file.id}.jpg`;
+          const coverPath = path.join(options.baseStorage, "covers", coverFileName);
+          const permanentUrl = `/storage/covers/${coverFileName}`;
+
+          if (fs.existsSync(coverPath)) {
+            coverUrl = permanentUrl;
+          } else {
+            const saved = await saveDriveThumbnail(file.thumbnailLink, coverPath);
+            coverUrl = saved
+              ? permanentUrl
+              : "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop";
+          }
+        }
+
         const now = new Date().toISOString();
         const nextDocument = {
           ...(document || {}),
@@ -213,9 +299,7 @@ export function startDriveCatalogSync(options: DriveSyncOptions) {
           description: document?.description || file.description || "",
           category: file.category,
           pageCount: document?.pageCount || 1,
-          coverUrl:
-            document?.coverUrl ||
-            "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop",
+          coverUrl,
           fileUrl: `/storage/${currentRelativePath.replace(/\\/g, "/")}`,
           tags: document?.tags || [],
           status: "ready",

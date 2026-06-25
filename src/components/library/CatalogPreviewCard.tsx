@@ -1,5 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+function CoverImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed || !src) {
+    return (
+      <div
+        className="cover-img-placeholder"
+        aria-label={alt}
+        style={{
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(150deg, #1c1c1c 0%, #2e2e2e 60%, #444 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <span style={{ color: '#666', fontSize: '11px', textAlign: 'center', padding: '8px' }}>
+          {alt}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export type CatalogPreviewCardProps = {
   title: string;
@@ -49,7 +82,7 @@ const CatalogPreviewCard: React.FC<CatalogPreviewCardProps> = ({
         </div>
 
         <div className="catalog-preview-cover-image">
-          <img src={image || '/placeholder.jpg'} alt={title} loading="lazy" decoding="async" />
+          <CoverImage src={image} alt={title} />
         </div>
 
         <div className="catalog-preview-cover-footer">

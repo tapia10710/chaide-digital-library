@@ -40,7 +40,7 @@ El producto tiene dos modalidades de ejecución:
 - Sincronización periódica y opcional de una carpeta de Google Drive mediante cuenta de servicio.
 - Persistencia local basada en `db.json`, archivos subidos e índices de búsqueda.
 - Construcción y publicación de imagen Docker mediante GitHub Actions.
-- Despliegue automatizado a servidor cuando están configurados los secretos SSH y Docker Hub.
+- Actualización automática del servidor mediante Watchtower después de publicar `latest`.
 - Ejecución en contenedor Docker con volumen persistente.
 
 ### Fuera del alcance actual
@@ -115,7 +115,7 @@ Una versión se considera lista cuando:
 - `db.json` se escribe como archivo completo y no está diseñado para escrituras concurrentes de varias instancias.
 - La autenticación actual cubre una sola cuenta y no ofrece permisos granulares.
 - Los PDFs y recursos pueden aumentar considerablemente el tamaño del repositorio, la imagen y el artefacto estático.
-- Los workflows de servidor dependen de secretos de Docker Hub, SSH, red Traefik y un `.env` existente en el host.
+- La publicación de imagen depende de Docker Hub; la actualización del servidor depende de Watchtower, su autenticación al registro, la red Traefik y un `.env` existente en el host.
 - `firestore.rules` permite acceso abierto, pero Firebase/Firestore no es la persistencia operativa actual; no debe desplegarse esa regla en producción sin endurecerla.
 
 ## Regla de mantenimiento

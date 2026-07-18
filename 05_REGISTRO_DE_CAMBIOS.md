@@ -23,6 +23,8 @@ El proyecto usa por ahora versiones fechadas. Cuando exista una política de lan
 
 - Se corrigió el namespace de la imagen Docker de `techchaide` a
   `tapia10710`, correspondiente a la cuenta configurada en GitHub Actions.
+- Se consolidaron los workflows Docker en uno solo y se retiró el job SSH no
+  configurado; el servidor se actualiza mediante Watchtower.
 - Sin cambios en la aplicación, API ni datos.
 - No requiere migración ni despliegue inmediato.
 

@@ -78,11 +78,11 @@ Para Railway, el repositorio incluye `railway.json`, un `Dockerfile` y la
 plantilla `.env.railway.example`. Los pasos completos estan en
 [`DESPLIEGUE-ADMINISTRATIVO.md`](DESPLIEGUE-ADMINISTRATIVO.md).
 
-La rama `main` contiene workflows para construir la imagen Docker y, cuando
-GitHub tiene configurados los secretos del servidor, desplegarla. Este
-repositorio no contiene actualmente un workflow de GitHub Pages. El build
-estatico sigue disponible, pero su publicación requiere configurar un workflow
-o proveedor por separado.
+La rama `main` contiene un workflow para construir y publicar la imagen Docker.
+El servidor utiliza Watchtower para detectar la nueva etiqueta `latest` y
+actualizar el contenedor. Este repositorio no contiene actualmente un workflow
+de GitHub Pages. El build estatico sigue disponible, pero su publicación
+requiere configurar un workflow o proveedor por separado.
 
 Para habilitar operaciones administrativas en un despliegue con backend,
 configure `ADMIN_TOKEN` exclusivamente como variable de entorno del servidor.

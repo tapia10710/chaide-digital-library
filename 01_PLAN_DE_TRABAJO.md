@@ -30,8 +30,8 @@ Estado: **completada con validaciones pendientes**
 - [x] Dockerfile multietapa.
 - [x] Docker Compose con volumen persistente.
 - [x] Variables de entorno de ejemplo.
-- [x] Workflows para publicar imagen Docker y desplegar a servidor.
-- [ ] Consolidar los dos workflows que actualmente construyen la misma imagen.
+- [x] Workflow único para publicar imagen Docker.
+- [x] Actualización del servidor mediante Watchtower.
 - [ ] Configurar un workflow de Pages solo si se decide publicar la modalidad estática.
 - [ ] Validar restauración del volumen Docker en un host limpio.
 - [ ] Definir la URL oficial de la instancia administrativa.
@@ -86,7 +86,7 @@ Estado: **pendiente de decisión**
 | P0 | Guardar los secretos solo en GitHub/host y rotar cualquier secreto que haya sido compartido | No hay credenciales válidas en el repositorio ni en entregables públicos. |
 | P0 | Respaldar y restaurar `DATA_DIR` en una prueba real | Recuperación confirmada de metadatos, PDFs, portadas, banners e índices. |
 | P1 | Definir sincronización panel/Drive → build estático | Los cambios pueden publicarse de manera repetible si se activa esa modalidad. |
-| P1 | Consolidar y probar workflows Docker | Un único despliegue reproducible desde `main`. |
+| P1 | Monitorear publicación Docker y actualización Watchtower | Despliegue reproducible desde `main`. |
 | P1 | Añadir pruebas de autenticación y CRUD | Menos riesgo de regresiones en administración. |
 | P2 | Monitoreo, auditoría y política de retención | Operación mantenible y trazable. |
 
@@ -116,7 +116,7 @@ Estado: **pendiente de decisión**
 4. Probar los recorridos afectados.
 5. Actualizar esta documentación y el registro de cambios.
 6. Abrir un pull request con alcance, prueba realizada, impacto en datos y plan de reversión.
-7. Integrar en `main`; los workflows intentarán construir la imagen y desplegar el servidor según sus secretos.
+7. Integrar en `main`; el workflow publicará `latest` y Watchtower actualizará el servidor.
 8. Vigilar GitHub Actions y seguir `06_DESPLIEGUE_Y_RESPALDO.md`.
 
 ## Definición de terminado por cambio

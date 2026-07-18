@@ -51,31 +51,25 @@ Antes de producción:
 ## Automatización vigente en GitHub
 
 El repositorio no contiene actualmente un workflow de GitHub Pages. Al enviar
-cambios a `main` se ejecutan dos workflows:
+cambios a `main` se ejecuta un único workflow:
 
-- `.github/workflows/deploy.yml`: construye y publica
+- `.github/workflows/deploy-server.yml`: construye y publica
   `tapia10710/catalogos-pdf:latest` y una etiqueta por SHA en Docker Hub.
-- `.github/workflows/deploy-server.yml`: vuelve a construir y publicar la
-  imagen y después actualiza el servidor por SCP/SSH, esperando que el
-  contenedor quede saludable.
-
-Los dos workflows construyen la misma imagen. Deben consolidarse para evitar
-trabajo duplicado y posibles carreras sobre la etiqueta `latest`.
+- Watchtower, ejecutándose en el servidor, consulta `latest` cada 60 segundos,
+  actualiza `catalogos-pdf` y limpia la imagen anterior.
 
 ### Configuración requerida en GitHub
 
 | Tipo | Nombre |
 |---|---|
 | Variable | `DOCKERHUB_USERNAME` |
-| Secreto | `DOCKERHUB_USERNAME` para el workflow heredado `deploy.yml` |
 | Secreto | `DOCKERHUB_TOKEN` |
-| Secreto | `VITE_BASE_PATH` para `deploy.yml` |
-| Secretos de servidor | `SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`, `SERVER_PORT`, `SERVER_DEPLOY_PATH` |
 
-En el host, `SERVER_DEPLOY_PATH` debe contener un `.env` válido y Docker debe
-tener la red externa `traefik-net`. El compose vigente publica la aplicación
-mediante Traefik en `apps.chaide.com`, con interfaz bajo `/catalogos` y rutas
-separadas para `/api` y `/storage`.
+No se requieren secretos SSH en GitHub. En el host, Docker debe estar
+autenticado para descargar la imagen y debe existir la red externa
+`traefik-net`. El compose vigente publica la aplicación mediante Traefik en
+`apps.chaide.com`, con interfaz bajo `/catalogos` y rutas separadas para `/api`
+y `/storage`.
 
 ### Reversión del servidor
 

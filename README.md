@@ -8,8 +8,8 @@ con Docker en un servidor.
 
 - Sitio publico con catalogos, categorias, busqueda y visor PDF.
 - Panel de administracion para subir, editar y eliminar contenido.
-- Despliegue estatico automatico en GitHub Pages.
-- Despliegue completo con backend mediante Docker o Railway.
+- Build estatico de solo lectura disponible mediante `npm run build:pages`.
+- Despliegue completo con backend mediante Docker, Railway o servidor propio.
 - Catalogos, portadas y configuracion inicial incluidos en `data/`.
 
 ## Requisitos
@@ -35,10 +35,9 @@ npm run build
 npm run build:pages
 ```
 
-## Publicar en otro GitHub
+## Publicar el código en otro GitHub
 
-El proyecto no depende del nombre ni de la cuenta del repositorio. El flujo de
-GitHub Pages calcula automaticamente la ruta correcta.
+El repositorio puede alojarse en cualquier cuenta de GitHub.
 
 1. Crear un repositorio vacio en la cuenta de destino.
 2. Si esta carpeta ya tiene Git, cambiar el remoto:
@@ -58,18 +57,14 @@ git remote add origin https://github.com/USUARIO/NUEVO-REPOSITORIO.git
 git push -u origin main
 ```
 
-3. En GitHub, abrir `Settings > Pages`.
-4. En `Build and deployment`, seleccionar `GitHub Actions`.
-5. Esperar a que finalice `Deploy GitHub Pages` en la pestana `Actions`.
-
 No se deben subir `.env`, `node_modules`, `dist`, registros ni paquetes ZIP.
 Los archivos PDF individuales incluidos no superan el limite de 100 MB de
 GitHub.
 
 ## Despliegue completo
 
-GitHub Pages es una version publica de solo lectura. Para habilitar el panel de
-administracion y la subida de archivos se necesita ejecutar el backend:
+Para habilitar el panel de administracion, Google Drive y la subida de archivos
+se necesita ejecutar el backend:
 
 ```powershell
 Copy-Item .env.docker.example .env
@@ -82,3 +77,25 @@ guardarse en un volumen persistente. Nunca se debe subir el archivo `.env`.
 Para Railway, el repositorio incluye `railway.json`, un `Dockerfile` y la
 plantilla `.env.railway.example`. Los pasos completos estan en
 [`DESPLIEGUE-ADMINISTRATIVO.md`](DESPLIEGUE-ADMINISTRATIVO.md).
+
+La rama `main` contiene workflows para construir la imagen Docker y, cuando
+GitHub tiene configurados los secretos del servidor, desplegarla. Este
+repositorio no contiene actualmente un workflow de GitHub Pages. El build
+estatico sigue disponible, pero su publicación requiere configurar un workflow
+o proveedor por separado.
+
+Para habilitar operaciones administrativas en un despliegue con backend,
+configure `ADMIN_TOKEN` exclusivamente como variable de entorno del servidor.
+
+## Documentación del proyecto
+
+> **Aviso:** esta documentación se actualiza manualmente; cualquier cambio funcional,
+> técnico o de despliegue debe reflejarse también en el registro de cambios.
+
+- [00 — Contexto maestro](00_CONTEXTO_MAESTRO.md)
+- [01 — Plan de trabajo](01_PLAN_DE_TRABAJO.md)
+- [02 — Mapa funcional](02_MAPA_FUNCIONAL.md)
+- [03 — Modelo de datos](03_MODELO_DE_DATOS.md)
+- [04 — Roles y permisos](04_ROLES_Y_PERMISOS.md)
+- [05 — Registro de cambios](05_REGISTRO_DE_CAMBIOS.md)
+- [06 — Despliegue y respaldo](06_DESPLIEGUE_Y_RESPALDO.md)

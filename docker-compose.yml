@@ -8,7 +8,7 @@ volumes:
 
 services:
   catalogos-pdf:
-    image: techchaide/catalogos-pdf:latest
+    image: tapia10710/catalogos-pdf:latest
     container_name: catalogos_pdf_prod
     restart: unless-stopped
     environment:

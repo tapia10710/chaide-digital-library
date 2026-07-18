@@ -21,6 +21,8 @@ El proyecto usa por ahora versiones fechadas. Cuando exista una política de lan
 
 ### Impacto operativo
 
+- Se corrigió el namespace de la imagen Docker de `techchaide` a
+  `tapia10710`, correspondiente a la cuenta configurada en GitHub Actions.
 - Sin cambios en la aplicación, API ni datos.
 - No requiere migración ni despliegue inmediato.
 

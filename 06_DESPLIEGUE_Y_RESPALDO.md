@@ -54,7 +54,7 @@ El repositorio no contiene actualmente un workflow de GitHub Pages. Al enviar
 cambios a `main` se ejecutan dos workflows:
 
 - `.github/workflows/deploy.yml`: construye y publica
-  `techchaide/catalogos-pdf:latest` y una etiqueta por SHA en Docker Hub.
+  `tapia10710/catalogos-pdf:latest` y una etiqueta por SHA en Docker Hub.
 - `.github/workflows/deploy-server.yml`: vuelve a construir y publicar la
   imagen y después actualiza el servidor por SCP/SSH, esperando que el
   contenedor quede saludable.
@@ -79,7 +79,7 @@ separadas para `/api` y `/storage`.
 
 ### Reversión del servidor
 
-1. Identificar la etiqueta `techchaide/catalogos-pdf:<SHA>` de la versión sana.
+1. Identificar la etiqueta `tapia10710/catalogos-pdf:<SHA>` de la versión sana.
 2. Respaldar los volúmenes antes de cualquier restauración de datos.
 3. Fijar temporalmente esa etiqueta en el compose del servidor.
 4. Ejecutar `docker compose pull catalogos-pdf` y recrear únicamente el servicio.

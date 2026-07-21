@@ -322,7 +322,16 @@ export const useStore = create<AppState>((set, get) => ({
   isLoadingDocs: false,
   hasLoadedDocs: false,
   fetchDocuments: async (isAdmin = false, retries = 3) => {
-    if (get().isLoadingDocs) return;
+    if (get().isLoadingDocs) {
+      if (!isAdmin) return;
+      // The app can begin a public fetch while Firebase is still restoring the
+      // signed-in administrator. Never discard the subsequent admin refresh,
+      // otherwise private drafts remain hidden until a manual reload.
+      for (let attempt = 0; attempt < 100 && get().isLoadingDocs; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (get().isLoadingDocs) return;
+    }
     set({ isLoadingDocs: true });
     
     const apiUrl = isStaticSite || isFirebaseSite

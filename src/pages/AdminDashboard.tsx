@@ -215,9 +215,11 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-6 py-4">{doc.pageCount}</td>
                   <td className="px-6 py-4">
-                    <span className={`flex items-center gap-1.5 text-xs font-medium ${doc.status === 'ready' ? 'text-emerald-400' : 'text-blue-400'}`}>
-                      <span className={`w-2 h-2 rounded-full ${doc.status === 'ready' ? 'bg-emerald-400' : 'bg-blue-400'} ${doc.status === 'ready' ? '' : 'animate-pulse'}`}></span>
-                      {doc.status === 'ready' ? 'Publicado' : 'Procesando / No Publicado'}
+                    <span className={`flex items-center gap-1.5 text-xs font-medium ${doc.visibility === 'private' || doc.isActive === false ? 'text-amber-400' : doc.status === 'ready' ? 'text-emerald-400' : 'text-blue-400'}`}>
+                      <span className={`w-2 h-2 rounded-full ${doc.visibility === 'private' || doc.isActive === false ? 'bg-amber-400' : doc.status === 'ready' ? 'bg-emerald-400' : 'bg-blue-400'} ${doc.status === 'ready' ? '' : 'animate-pulse'}`}></span>
+                      {doc.visibility === 'private' || doc.isActive === false
+                        ? 'Borrador privado'
+                        : doc.status === 'ready' ? 'Publicado' : 'Procesando / No publicado'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">

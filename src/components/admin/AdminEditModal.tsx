@@ -191,6 +191,25 @@ export default function AdminEditModal({ document, onClose }: AdminEditModalProp
               </div>
             </div>
 
+            <div>
+              <label className="block text-gray-400 font-medium mb-1.5">Visibilidad</label>
+              <select
+                value={visibility}
+                onChange={(e) => {
+                  const nextVisibility = e.target.value;
+                  setVisibility(nextVisibility);
+                  setIsActive(nextVisibility === 'public');
+                }}
+                className="w-full bg-[#0B0F19] border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="private">Borrador privado</option>
+                <option value="public">Público</option>
+              </select>
+              <p className="text-[10px] text-gray-500 mt-1">
+                Al publicar se activa el documento; al volverlo privado se retira de la biblioteca y del buscador.
+              </p>
+            </div>
+
             {/* Category & Page Count */}
             <div className="grid grid-cols-2 gap-4">
               <div>

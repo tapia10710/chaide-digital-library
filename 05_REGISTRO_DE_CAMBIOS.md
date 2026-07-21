@@ -314,3 +314,28 @@ Commit de referencia: `510dff6`.
 - Verificados 21 catálogos, 661 páginas y 661 páginas de búsqueda sin fallos.
 - Verificación visual: el catálogo técnico de 229 páginas cargó cinco lienzos vecinos, avanzó, sobrevivió una recarga y mantuvo el visor operativo.
 - Verificados el buscador global, el enlace externo del banner y el panel administrativo con el nuevo control de borrador.
+
+## [Firebase 1.2.1] — 2026-07-21
+
+### Despliegue y protección de borradores
+
+- Corregida la compilación automática de GitHub: el workflow define explícitamente el modo Firebase y la configuración pública del puente Drive.
+- Añadido un respaldo por dominio en tiempo de ejecución para impedir que Firebase Hosting vuelva a ejecutar por error el modo servidor y consulte rutas `/api/*` inexistentes.
+- GitHub Actions autentica y despliega también las reglas de Firestore; la cuenta técnica conserva únicamente Hosting, reglas y consumo de servicios.
+- Las fichas de documentos privados ya no pueden leerse anónimamente; las consultas públicas exigen `ready`, `isActive=true` y `visibility=public`.
+- Normalizados 20 documentos históricos de `Público` a `public` mediante `npm run migrate:publication-fields`.
+
+### Administración y búsqueda
+
+- El panel distingue claramente `Borrador privado` de `Publicado`.
+- La edición incluye un selector de visibilidad; publicar activa el documento y volverlo privado lo retira de biblioteca y buscador.
+- Una consulta administrativa que coincide con una carga pública en curso ya no se descarta.
+- La página de búsqueda refresca el catálogo al abrirse en Firebase y ofrece un botón visible `Buscar`, además de admitir Enter.
+
+### Prueba integral real
+
+- Subido desde el administrador un PDF temporal de 3 páginas como borrador privado; se verificaron portada automática, respaldo Drive, SHA-256, fragmento Firestore y tres páginas de índice.
+- Confirmado que el borrador y su PDF interno respondían 403 sin autenticación; después se publicó desde el selector de visibilidad.
+- El visor cargó el lienzo actual, avanzó al pliego 2–3, se recuperó automáticamente tras recargar y encontró `PDFObject` en la búsqueda interna.
+- La búsqueda global devolvió tres coincidencias del índice persistente sin descargar todos los PDF.
+- El basurero administrativo eliminó la ficha, manifiestos, fragmentos, versión, páginas de búsqueda, PDF y portada de Drive; la biblioteca volvió a 21 catálogos.

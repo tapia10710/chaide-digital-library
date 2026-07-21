@@ -10,17 +10,16 @@ const outputDir = path.resolve('backups', 'private');
 const outputPath = path.join(outputDir, 'firebase-github-service-account.json');
 const requiredRoles = [
   'roles/firebasehosting.admin',
+  'roles/firebaserules.admin',
   'roles/serviceusage.serviceUsageConsumer',
 ];
 
 await mkdir(outputDir, { recursive: true });
 
+let hasLocalKey = false;
 try {
   const existing = JSON.parse(await readFile(outputPath, 'utf8'));
-  if (existing?.client_email === email && existing?.private_key) {
-    console.log(JSON.stringify({ outputPath, email, reused: true, roles: requiredRoles }));
-    process.exit(0);
-  }
+  hasLocalKey = existing?.client_email === email && Boolean(existing?.private_key);
 } catch {
   // Create the key below when no valid local private copy exists.
 }
@@ -49,7 +48,7 @@ async function ensureService(serviceName) {
     `https://serviceusage.googleapis.com/v1/projects/${project.projectNumber}/services/${serviceName}:enable`,
     { method: 'POST', body: '{}' },
   );
-  if (!operation.name) return;
+  if (operation.done || !operation.name || operation.name === 'DONE_OPERATION') return;
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const status = await request(`https://serviceusage.googleapis.com/v1/${operation.name}`);
     if (status.done) {
@@ -92,6 +91,11 @@ await request(`https://cloudresourcemanager.googleapis.com/v1/projects/${project
   method: 'POST',
   body: JSON.stringify({ policy }),
 });
+
+if (hasLocalKey) {
+  console.log(JSON.stringify({ outputPath, email, reused: true, roles: requiredRoles }));
+  process.exit(0);
+}
 
 const key = await request(
   `https://iam.googleapis.com/v1/projects/${projectId}/serviceAccounts/${encodeURIComponent(email)}/keys`,

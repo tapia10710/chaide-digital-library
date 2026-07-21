@@ -293,7 +293,23 @@ El resultado se guarda en `backups/firestore-latest.json`. No contiene contrase�
 
 Los nuevos documentos se crean como borradores privados. El administrador debe abrir su edición, validar portada, visor, índice y metadatos, y cambiar su visibilidad a pública cuando estén aprobados.
 
-GitHub Actions ejecuta compilación, TypeScript y validación de PDFs. El despliegue automático de Hosting se activa al configurar el secreto `FIREBASE_SERVICE_ACCOUNT_BIBLIOTECA_CATALOGOS_CHAIDE`; sin ese secreto, la verificación continúa funcionando y el despliegue se realiza con los comandos anteriores.
+GitHub Actions ejecuta compilación, TypeScript, validación de PDF, despliegue de reglas Firestore y despliegue de Hosting. El despliegue automático se activa al configurar el secreto `FIREBASE_SERVICE_ACCOUNT_BIBLIOTECA_CATALOGOS_CHAIDE`; sin ese secreto, la verificación continúa funcionando y el despliegue se realiza con los comandos anteriores.
+
+La cuenta de servicio de GitHub requiere exclusivamente:
+
+- `roles/firebasehosting.admin`
+- `roles/firebaserules.admin`
+- `roles/serviceusage.serviceUsageConsumer`
+
+Se configura con `npm run configure:github-firebase`. La clave local se escribe en `backups/private/`, fuera de Git, y debe eliminarse de la estación cuando ya no sea necesaria. El secreto de GitHub conserva la copia usada por el workflow.
+
+Si existen documentos históricos con valores localizados como `Público`, ejecutar una sola vez:
+
+```powershell
+npm run migrate:publication-fields
+```
+
+El comando conserva borradores explícitos y normaliza únicamente los campos de publicación faltantes o heredados.
 ## Publicación validada de un PDF
 
 1. Validar título, descripción, categoría, tamaño y firma PDF.

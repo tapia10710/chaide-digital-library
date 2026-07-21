@@ -38,8 +38,14 @@ for (const manifest of collections.pdfFiles) {
   const id = manifest.name.split('/').pop();
   subcollections.pdfVersions[id] = await listCollection(`pdfFiles/${encodeURIComponent(id)}/versions`);
 }
-for (const manifest of collections.pdfSearchIndexes) {
-  const id = manifest.name.split('/').pop();
+// Historical imports can contain search page subcollections without a
+// materialized parent manifest. Walk every catalogue id so those indexes are
+// still included in a recoverable backup.
+const searchIndexIds = new Set([
+  ...collections.documents.map((document) => document.name.split('/').pop()),
+  ...collections.pdfSearchIndexes.map((manifest) => manifest.name.split('/').pop()),
+]);
+for (const id of searchIndexIds) {
   subcollections.searchPages[id] = await listCollection(`pdfSearchIndexes/${encodeURIComponent(id)}/pages`);
 }
 

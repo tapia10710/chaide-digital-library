@@ -12,6 +12,7 @@
     "verify:admin-upload": "node scripts/verify-admin-upload-e2e.mjs",
     "backfill:drive": "node scripts/backfill-drive-backups.mjs",
     "backup:firestore": "node scripts/export-firestore-backup.mjs",
+    "migrate:publication-fields": "node scripts/backfill-publication-fields.mjs",
     "configure:github-firebase": "node scripts/configure-firebase-github-deploy.mjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",

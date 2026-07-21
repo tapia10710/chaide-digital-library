@@ -108,7 +108,15 @@ async function recordAdminAudit(action: string, targetId: string, details: Recor
 }
 
 export async function fetchFirebaseDocuments(isAdmin = false): Promise<DocumentDef[]> {
-  const snapshot = await getDocs(collection(db, 'documents'));
+  const source = isAdmin
+    ? collection(db, 'documents')
+    : query(
+      collection(db, 'documents'),
+      where('status', '==', 'ready'),
+      where('isActive', '==', true),
+      where('visibility', '==', 'public'),
+    );
+  const snapshot = await getDocs(source);
   return snapshot.docs
     .map((item) => normalizeSnapshot<DocumentDef>(item))
     .filter((item) => isAdmin || (

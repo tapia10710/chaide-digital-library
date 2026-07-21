@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, AlertCircle, Search, X, ArrowRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -92,6 +92,7 @@ export default function SearchResultsPage() {
   const [results, setResults] = useState<GlobalSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [indexingProgress, setIndexingProgress] = useState({ current: 0, total: 0 });
+  const requestedFirebaseRefreshRef = useRef(false);
 
   // Keep local input state synchronized with query param
   const [inputValue, setInputValue] = useState(query);
@@ -102,7 +103,13 @@ export default function SearchResultsPage() {
   }, [query, setSearchQuery]);
 
   useEffect(() => {
-    if (documents && documents.length === 0 && !isLoadingDocs) {
+    if (isLoadingDocs) return;
+    if (isFirebaseSite && !requestedFirebaseRefreshRef.current) {
+      requestedFirebaseRefreshRef.current = true;
+      fetchDocuments();
+      return;
+    }
+    if (documents && documents.length === 0) {
       fetchDocuments();
     }
   }, [documents, isLoadingDocs, fetchDocuments]);
@@ -491,7 +498,7 @@ export default function SearchResultsPage() {
             </div>
             <input 
               type="text" 
-              className="w-full h-14 pl-12 pr-12 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-lg"
+              className="w-full h-14 pl-12 pr-32 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-lg"
               placeholder="Buscar catálogos..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -500,12 +507,19 @@ export default function SearchResultsPage() {
               <button 
                 type="button"
                 onClick={handleClear}
-                className="absolute right-4 w-6 h-6 bg-gray-400 hover:bg-gray-500 text-white rounded-full flex items-center justify-center transition-colors"
+                className="absolute right-24 w-6 h-6 bg-gray-400 hover:bg-gray-500 text-white rounded-full flex items-center justify-center transition-colors"
                 aria-label="Borrar búsqueda"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
+            <button
+              type="submit"
+              disabled={!inputValue.trim()}
+              className="absolute right-2 h-10 px-4 rounded-lg bg-[#111] text-white text-sm font-semibold hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Buscar
+            </button>
           </form>
         </div>
 

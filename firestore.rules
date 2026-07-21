@@ -16,7 +16,11 @@ service cloud.firestore {
     }
 
     match /documents/{documentId} {
-      allow read: if true;
+      allow read: if isAdmin() || (
+        resource.data.status == 'ready'
+        && resource.data.isActive == true
+        && resource.data.visibility == 'public'
+      );
       allow create, update, delete: if isAdmin();
     }
 

@@ -1,6 +1,6 @@
 # 01 — Plan de trabajo
 
-> **Aviso de actualización manual:** este plan no cambia automáticamente. Debe revisarse al iniciar y cerrar cada fase, versión o despliegue. Última revisión manual: **17 de julio de 2026**.
+> **Aviso de actualización manual:** este plan no cambia automáticamente. Debe revisarse al iniciar y cerrar cada fase, versión o despliegue. Última revisión manual: **19 de julio de 2026**.
 
 ## Estado general
 
@@ -54,9 +54,9 @@ Estado: **en curso**
 
 ### Fase 3 — Calidad y seguridad
 
-Estado: **pendiente**
+Estado: **en curso**
 
-- [ ] Añadir pruebas automatizadas de API y recorridos críticos.
+- [x] Añadir pruebas automatizadas del visor, PDFs y carga administrativa crítica.
 - [ ] Añadir validación automatizada del esquema de `db.json`.
 - [ ] Aplicar límites de intentos al inicio de sesión.
 - [ ] Regenerar `ADMIN_TOKEN` y contraseñas conforme a una política definida.
@@ -64,14 +64,16 @@ Estado: **pendiente**
 - [ ] Definir tamaño máximo, extensiones y política de retención de archivos.
 - [ ] Revisar dependencias con una herramienta de auditoría.
 - [ ] Endurecer o retirar los archivos Firebase no utilizados antes de cualquier despliegue Firebase.
-- [ ] Incorporar verificación de enlaces y PDFs faltantes.
+- [x] Incorporar verificación de enlaces, PDFs faltantes e índices externos.
 - [ ] Definir cabeceras de seguridad y terminación HTTPS para producción.
 
 ### Fase 4 — Operación y sincronización
 
-Estado: **pendiente de decisión**
+Estado: **en curso**
 
-- [ ] Confirmar la fuente de verdad entre panel, Google Drive y datos semilla del repositorio.
+- [x] Definir Firestore como fuente pública dinámica, con PDF interno y Drive como respaldo.
+- [x] Respaldar y verificar en Drive los 21 PDFs publicados.
+- [x] Permitir restaurar desde Drive y regenerar el índice desde el administrador.
 - [ ] Definir cómo exportar al build estático los cambios del panel o Drive, si se activa esa modalidad.
 - [ ] Automatizar respaldos de `DATA_DIR`.
 - [ ] Definir retención, cifrado y prueba periódica de copias.
@@ -128,3 +130,24 @@ Estado: **pendiente de decisión**
 - [ ] Actualiza `05_REGISTRO_DE_CAMBIOS.md`.
 - [ ] Actualiza la fecha de los documentos afectados.
 - [ ] Dispone de una forma clara de reversión.
+
+## Fase Firebase — completada 2026-07-17
+
+- [x] Proyecto, aplicación web y Hosting configurados.
+- [x] Firestore creado en `southamerica-east1` y protegido contra borrado.
+- [x] 21 documentos, 5 categorías y banner migrados.
+- [x] Inicio administrativo con usuario y contraseña habilitado.
+- [x] Escrituras restringidas a la cuenta técnica verificada.
+- [x] Puente de Google Drive operativo para respaldos e imágenes.
+- [x] PDF históricos conservados en Hosting.
+- [x] PDF nuevos fragmentados en Firestore y abiertos con el visor integrado.
+- [x] Verificación de 21/21 PDF y rechazo de escritura anónima.
+- [x] Estabilización del visor: navegación sin carreras, pliegos correctos y caché acotada.
+- [x] Publicación validada con índice de búsqueda versionado por PDF.
+- [x] Búsqueda general desde el visor y búsqueda interna basada en índices persistentes.
+
+Pendientes operativos:
+
+- [ ] Configurar un dominio personalizado si Chaide decide sustituir la URL `web.app`.
+- [ ] Revisar mensualmente el consumo de transferencia gratuita.
+- [ ] Exportar periódicamente Firestore y la carpeta de respaldo de Drive.

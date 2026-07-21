@@ -1,17 +1,28 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import PdfViewer from '../components/preview/PdfViewer';
+import type { DocumentDef } from '../lib/mockData';
+import { isFirebaseSite } from '../lib/runtimeConfig';
 
 export default function ViewerPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const initialPage = parseInt(searchParams.get('page') || '1');
+  const requestedPage = Number.parseInt(searchParams.get('page') || '1', 10);
+  const initialPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const initialSearch = searchParams.get('search') || '';
   const { documents, fetchDocuments, isLoadingDocs, hasLoadedDocs } = useStore();
-  const doc = useMemo(() => documents.find((document) => document.id === id) || null, [documents, id]);
+  const [directDocument, setDirectDocument] = useState<DocumentDef | null>(null);
+  const [directDocumentResolved, setDirectDocumentResolved] = useState(!isFirebaseSite);
+  const doc = useMemo(
+    () => documents.find((document) => document.id === id) || directDocument,
+    [documents, id, directDocument],
+  );
+  const [firebasePdfUrl, setFirebasePdfUrl] = useState('');
+  const [firebasePdfError, setFirebasePdfError] = useState('');
+  const [firebasePdfProgress, setFirebasePdfProgress] = useState(0);
 
   useEffect(() => {
     if (!hasLoadedDocs && !isLoadingDocs) {
@@ -19,7 +30,87 @@ export default function ViewerPage() {
     }
   }, [fetchDocuments, hasLoadedDocs, isLoadingDocs]);
 
-  if (!hasLoadedDocs || isLoadingDocs) {
+  useEffect(() => {
+    if (!isFirebaseSite || !id) return;
+    let active = true;
+    setDirectDocument(null);
+    setDirectDocumentResolved(false);
+    import('../lib/firebaseCatalog')
+      .then(({ fetchFirebaseDocument }) => fetchFirebaseDocument(id))
+      .then((value) => {
+        if (active) setDirectDocument(value);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setDirectDocumentResolved(true);
+      });
+    return () => { active = false; };
+  }, [id]);
+
+  useEffect(() => {
+    const sourceUrl = doc?.fileUrl || '';
+    if (!sourceUrl.startsWith('firestore-pdf://')) {
+      setFirebasePdfUrl('');
+      setFirebasePdfError('');
+      setFirebasePdfProgress(0);
+      return;
+    }
+
+    let active = true;
+    let objectUrl = '';
+    const source = sourceUrl.slice('firestore-pdf://'.length);
+    const separator = source.indexOf('?');
+    const firebaseId = separator >= 0 ? source.slice(0, separator) : source;
+    const version = separator >= 0
+      ? new URLSearchParams(source.slice(separator + 1)).get('version') || undefined
+      : undefined;
+    setFirebasePdfUrl('');
+    setFirebasePdfError('');
+    setFirebasePdfProgress(0);
+    import('../lib/firebaseCatalog')
+      .then(async ({ loadPdfFromFirestore, loadPublicDrivePdf }) => {
+        let primaryError: unknown;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            return await loadPdfFromFirestore(
+              firebaseId,
+              (progress) => {
+                if (active) setFirebasePdfProgress(progress);
+              },
+              version,
+            );
+          } catch (error) {
+            primaryError = error;
+            if (attempt === 0) await new Promise((resolve) => window.setTimeout(resolve, 800));
+          }
+        }
+        if (doc?.externalUrl) {
+          if (active) setFirebasePdfProgress(90);
+          try {
+            return await loadPublicDrivePdf(doc.externalUrl);
+          } catch (backupError) {
+            const primaryMessage = primaryError instanceof Error ? primaryError.message : 'Firestore no respondió.';
+            const backupMessage = backupError instanceof Error ? backupError.message : 'Drive no respondió.';
+            throw new Error(`${primaryMessage} El respaldo automático también falló: ${backupMessage}`);
+          }
+        }
+        throw primaryError;
+      })
+      .then((url) => {
+        objectUrl = url;
+        if (active) setFirebasePdfUrl(url);
+      })
+      .catch((error) => {
+        if (active) setFirebasePdfError(error instanceof Error ? error.message : 'No se pudo cargar el PDF.');
+      });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [doc?.externalUrl, doc?.fileUrl]);
+
+  if (!doc && ((!hasLoadedDocs || isLoadingDocs) || !directDocumentResolved)) {
     return (
       <div className="fixed inset-0 bg-[#0B0F19] flex items-center justify-center text-white flex-col gap-4">
         <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -41,13 +132,39 @@ export default function ViewerPage() {
      );
   }
 
-  const urlToUse = doc ? ((typeof doc.fileUrl === 'string' && doc.fileUrl.trim().startsWith('<')) || (typeof doc.fileUrl === 'string' && doc.fileUrl.includes('<script')) 
-      ? doc.fileUrl 
-      : (doc.fileUrl ? doc.fileUrl : doc.externalUrl)) : '';
+  if (doc.fileUrl?.startsWith('firestore-pdf://') && !firebasePdfUrl && !firebasePdfError) {
+    return (
+      <div className="fixed inset-0 bg-[#0B0F19] flex items-center justify-center text-white flex-col gap-4">
+        <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-gray-300">Preparando el catálogo para el visor…</p>
+        <div className="h-1.5 w-56 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-blue-500 transition-all duration-300"
+            style={{ width: `${firebasePdfProgress}%` }}
+          />
+        </div>
+        <p className="text-xs tabular-nums text-gray-500">{firebasePdfProgress}%</p>
+      </div>
+    );
+  }
 
-  const downloadUrl = (doc && typeof doc.fileUrl === 'string' && !doc.fileUrl.trim().startsWith('<'))
+  if (firebasePdfError) {
+    return (
+      <div className="fixed inset-0 bg-[#0B0F19] flex items-center justify-center text-white flex-col gap-4 p-6 text-center">
+        <h2 className="text-xl font-bold">No se pudo abrir el catálogo</h2>
+        <p className="text-gray-400 max-w-md">{firebasePdfError}</p>
+        <button onClick={() => navigate('/')} className="px-6 py-2 bg-blue-600 rounded-lg">Volver</button>
+      </div>
+    );
+  }
+
+  const urlToUse = firebasePdfUrl || (doc ? ((typeof doc.fileUrl === 'string' && doc.fileUrl.trim().startsWith('<')) || (typeof doc.fileUrl === 'string' && doc.fileUrl.includes('<script'))
+      ? doc.fileUrl 
+      : (doc.fileUrl ? doc.fileUrl : doc.externalUrl)) : '');
+
+  const downloadUrl = firebasePdfUrl || ((doc && typeof doc.fileUrl === 'string' && !doc.fileUrl.trim().startsWith('<'))
       ? doc.fileUrl
-      : (doc && typeof doc.externalUrl === 'string' && doc.externalUrl.startsWith('http') ? doc.externalUrl : undefined);
+      : (doc && typeof doc.externalUrl === 'string' && doc.externalUrl.startsWith('http') ? doc.externalUrl : undefined));
 
   return (
     <div className="min-h-screen bg-[#f5f5f2] selection:bg-blue-500 selection:text-white">

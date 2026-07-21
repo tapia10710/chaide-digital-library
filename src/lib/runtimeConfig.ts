@@ -1,4 +1,5 @@
 export const isStaticSite = import.meta.env.VITE_STATIC_SITE === 'true';
+export const isFirebaseSite = import.meta.env.VITE_FIREBASE_SITE === 'true';
 
 export function publicAssetUrl(url: string | null | undefined) {
   if (!url || !isStaticSite) return url || '';

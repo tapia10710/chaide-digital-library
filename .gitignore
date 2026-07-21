@@ -2,6 +2,9 @@ node_modules/
 build/
 dist/
 dist-pages/
+.firebase/
+tmp/
+backups/private/
 coverage/
 .DS_Store
 *.log

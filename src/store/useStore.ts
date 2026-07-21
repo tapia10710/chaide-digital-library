@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { DocumentDef } from '../lib/mockData';
-import { isStaticSite, publicAssetUrl, staticDataUrl } from '../lib/runtimeConfig';
+import { isFirebaseSite, isStaticSite, publicAssetUrl, staticDataUrl } from '../lib/runtimeConfig';
+import { normalizeDestinationUrl } from '../lib/linkUtils';
 
 export type UserRole = 'guest' | 'user' | 'admin';
 
@@ -19,11 +20,22 @@ function staticWriteError() {
 }
 
 function normalizePublicDocument(document: DocumentDef): DocumentDef {
+  const sanitizeIndexItems = (items: NonNullable<DocumentDef['indexItems']>): NonNullable<DocumentDef['indexItems']> =>
+    items.flatMap((item) => {
+      const title = String(item.title || '')
+        .replace(/[\u0000-\u001F\u007F]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const children = item.children ? sanitizeIndexItems(item.children) : undefined;
+      if (title.replace(/[^\p{L}\p{N}]/gu, '').length < 2) return children || [];
+      return [{ ...item, title, children }];
+    });
   return {
     ...document,
     coverUrl: publicAssetUrl(document.coverUrl),
     fileUrl: publicAssetUrl(document.fileUrl),
     externalUrl: publicAssetUrl(document.externalUrl),
+    indexItems: document.indexItems ? sanitizeIndexItems(document.indexItems) : document.indexItems,
   };
 }
 
@@ -39,6 +51,7 @@ function normalizePublicBanner(banner: PromotionalBannerConfig): PromotionalBann
     ...banner,
     imageUrl: publicAssetUrl(banner.imageUrl),
     mobileImageUrl: publicAssetUrl(banner.mobileImageUrl),
+    targetUrl: normalizeDestinationUrl(banner.targetUrl),
   };
 }
 
@@ -154,7 +167,15 @@ export const useStore = create<AppState>((set, get) => ({
   categories: [],
   fetchCategories: async () => {
     try {
-      const res = await fetch(isStaticSite ? staticDataUrl('categories.json') : '/api/categories');
+      if (isFirebaseSite) {
+        const { fetchFirebaseCategories } = await import('../lib/firebaseCatalog');
+        const firebaseCategories = await fetchFirebaseCategories();
+        if (firebaseCategories.length) {
+          set({ categories: firebaseCategories });
+          return;
+        }
+      }
+      const res = await fetch(isStaticSite || isFirebaseSite ? staticDataUrl('categories.json') : '/api/categories');
       if (res.ok) {
         const data = await res.json();
         set({ categories: data.map(normalizePublicCategory) });
@@ -165,6 +186,14 @@ export const useStore = create<AppState>((set, get) => ({
   },
   addCategory: async (cat) => {
     if (isStaticSite) throw staticWriteError();
+    if (isFirebaseSite) {
+      const { saveFirebaseCategory } = await import('../lib/firebaseCatalog');
+      const id = cat.id || cat.slug || `category-${Date.now().toString(36)}`;
+      const newCategory = { ...cat, id, active: cat.active !== false };
+      await saveFirebaseCategory(id, newCategory);
+      set((state) => ({ categories: [...state.categories, newCategory] }));
+      return;
+    }
     try {
       const res = await fetch('/api/categories', {
         method: 'POST',
@@ -181,6 +210,15 @@ export const useStore = create<AppState>((set, get) => ({
   },
   updateCategory: async (id, cat) => {
     if (isStaticSite) throw staticWriteError();
+    if (isFirebaseSite) {
+      const { saveFirebaseCategory } = await import('../lib/firebaseCatalog');
+      const updatedCategory = { ...cat, id, active: cat.active !== false };
+      await saveFirebaseCategory(id, updatedCategory);
+      set((state) => ({
+        categories: state.categories.map((item) => item.id === id ? updatedCategory : item),
+      }));
+      return;
+    }
     try {
       const res = await fetch(`/api/categories/${id}`, {
         method: 'PUT',
@@ -197,6 +235,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
   removeCategory: async (id) => {
     if (isStaticSite) throw staticWriteError();
+    if (isFirebaseSite) {
+      const { deleteFirebaseCategory } = await import('../lib/firebaseCatalog');
+      await deleteFirebaseCategory(id);
+      set((state) => ({ categories: state.categories.filter((item) => item.id !== id) }));
+      return;
+    }
     try {
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -211,7 +255,18 @@ export const useStore = create<AppState>((set, get) => ({
   hasLoadedPromotionalBanner: false,
   fetchPromotionalBanner: async () => {
     try {
-      const res = await fetch(isStaticSite ? staticDataUrl('promotional-banner.json') : '/api/promotional-banner');
+      if (isFirebaseSite) {
+        const { fetchFirebaseBanner } = await import('../lib/firebaseCatalog');
+        const firebaseBanner = await fetchFirebaseBanner();
+        if (firebaseBanner) {
+          set({
+            promotionalBanner: normalizePublicBanner(firebaseBanner),
+            hasLoadedPromotionalBanner: true,
+          });
+          return;
+        }
+      }
+      const res = await fetch(isStaticSite || isFirebaseSite ? staticDataUrl('promotional-banner.json') : '/api/promotional-banner');
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       set({ promotionalBanner: normalizePublicBanner(data), hasLoadedPromotionalBanner: true });
@@ -222,6 +277,13 @@ export const useStore = create<AppState>((set, get) => ({
   },
   updatePromotionalBanner: async (banner) => {
     if (isStaticSite) throw staticWriteError();
+    if (isFirebaseSite) {
+      const { saveFirebaseBanner } = await import('../lib/firebaseCatalog');
+      const normalizedBanner = normalizePublicBanner(banner);
+      await saveFirebaseBanner(normalizedBanner);
+      set({ promotionalBanner: normalizedBanner, hasLoadedPromotionalBanner: true });
+      return;
+    }
     try {
       const res = await fetch('/api/promotional-banner', {
         method: 'PUT',
@@ -238,6 +300,11 @@ export const useStore = create<AppState>((set, get) => ({
   },
   uploadPromotionalBannerImage: async (file) => {
     if (isStaticSite) throw staticWriteError();
+    if (isFirebaseSite) {
+      const { uploadFileToDrive } = await import('../lib/firebaseCatalog');
+      const result = await uploadFileToDrive(file, 'banners');
+      return result.thumbnailUrl || result.driveUrl;
+    }
     const formData = new FormData();
     formData.append('image', file);
 
@@ -258,12 +325,22 @@ export const useStore = create<AppState>((set, get) => ({
     if (get().isLoadingDocs) return;
     set({ isLoadingDocs: true });
     
-    const apiUrl = isStaticSite
+    const apiUrl = isStaticSite || isFirebaseSite
       ? staticDataUrl('documents.json')
       : `${window.location.origin}/api/documents${isAdmin ? '?admin=true' : ''}`;
 
     for (let i = 0; i < retries; i++) {
         try {
+          if (isFirebaseSite) {
+            const { fetchFirebaseDocuments } = await import('../lib/firebaseCatalog');
+            const firebaseDocuments = await fetchFirebaseDocuments(isAdmin);
+            set({
+              documents: firebaseDocuments.map(normalizePublicDocument),
+              isLoadingDocs: false,
+              hasLoadedDocs: true,
+            });
+            return;
+          }
           console.log(`[Store] Attempt ${i + 1}: Fetching ${apiUrl}`);
           const res = await fetch(apiUrl, {
             headers: {
@@ -285,7 +362,7 @@ export const useStore = create<AppState>((set, get) => ({
           // catalogs open instantly once the user clicks, and search is ready
           // before they even enter the viewer. PDF loading is prioritized over
           // home-page lightness, as requested.
-          if (!isAdmin && !isStaticSite) {
+          if (!isAdmin && !isStaticSite && !isFirebaseSite) {
             import('../lib/pdfPrefetch')
               .then((m) => m.startGlobalPdfPrefetch(data))
               .catch(() => undefined);
@@ -306,6 +383,46 @@ export const useStore = create<AppState>((set, get) => ({
   
   updateDocument: async (id, formData) => {
     if (isStaticSite) throw staticWriteError();
+    if (isFirebaseSite) {
+      const { deleteFileFromDrive, saveFirebaseDocument, uploadFileToDrive } = await import('../lib/firebaseCatalog');
+      const changes: Record<string, unknown> = {};
+      formData.forEach((value, key) => {
+        if (value instanceof File) return;
+        if (key === 'pageCount' || key === 'priority') {
+          changes[key] = Number(value);
+        } else if (key === 'isActive') {
+          changes[key] = value === 'true';
+        } else {
+          changes[key] = value;
+        }
+      });
+      const cover = formData.get('cover');
+      const currentDocument = get().documents.find((item) => item.id === id);
+      let newCoverFileId = '';
+      if (cover instanceof File && cover.size) {
+        const upload = await uploadFileToDrive(cover, 'covers');
+        newCoverFileId = upload.fileId;
+        changes.coverUrl = upload.thumbnailUrl || upload.driveUrl;
+        changes.coverFileId = upload.fileId;
+      }
+      try {
+        await saveFirebaseDocument(id, changes);
+      } catch (error) {
+        if (newCoverFileId) await deleteFileFromDrive(newCoverFileId).catch(() => undefined);
+        throw error;
+      }
+      if (
+        newCoverFileId &&
+        currentDocument?.coverFileId &&
+        currentDocument.coverFileId !== newCoverFileId
+      ) {
+        await deleteFileFromDrive(currentDocument.coverFileId).catch(() => undefined);
+      }
+      set((state) => ({
+        documents: state.documents.map((item) => item.id === id ? { ...item, ...changes } : item),
+      }));
+      return;
+    }
     try {
       const res = await fetch(`/api/documents/${id}`, {
         method: 'PUT',
@@ -332,6 +449,11 @@ export const useStore = create<AppState>((set, get) => ({
     }));
 
     try {
+      if (isFirebaseSite) {
+        const { deleteFirebaseDocument } = await import('../lib/firebaseCatalog');
+        await deleteFirebaseDocument(id);
+        return;
+      }
       console.log(`[Store] Requesting deletion of document: ${id}`);
       const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
       
@@ -347,6 +469,7 @@ export const useStore = create<AppState>((set, get) => ({
       alert(`No se pudo eliminar el documento: ${e.message}`);
       // Rollback
       set({ documents: previousDocs });
+      throw e;
     }
   },
   updateDocumentStatus: (id, status) => set((state) => ({

@@ -1,8 +1,9 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, HashRouter, Navigate, Routes, Route } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
+import { BrowserRouter, HashRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { ReactLenis } from 'lenis/react';
 import AppLayout from './components/layout/AppLayout';
-import { isStaticSite } from './lib/runtimeConfig';
+import { isFirebaseSite, isStaticSite } from './lib/runtimeConfig';
+import { useStore } from './store/useStore';
 
 const LibraryHome = lazy(() => import('./pages/LibraryHome'));
 const ViewerPage = lazy(() => import('./pages/ViewerPage'));
@@ -22,6 +23,55 @@ function RouteFallback() {
   );
 }
 
+function FirebaseAuthBootstrap({ children }: { children: React.ReactNode }) {
+  const [isReady, setIsReady] = useState(!isFirebaseSite);
+  const location = useLocation();
+  const login = useStore((state) => state.login);
+  const logout = useStore((state) => state.logout);
+
+  useEffect(() => {
+    if (!isFirebaseSite) return;
+    let unsubscribe: () => void = () => {};
+    let active = true;
+
+    Promise.all([
+      import('firebase/auth'),
+      import('./lib/firebase'),
+      import('./lib/firebaseCatalog'),
+    ]).then(([firebaseAuth, firebase, catalog]) => {
+      if (!active) return;
+      unsubscribe = firebaseAuth.onAuthStateChanged(firebase.auth, (user) => {
+        if (user && catalog.isFirebaseAdminEmail(user.email) && user.emailVerified) {
+          login({
+            id: user.uid,
+            email: user.email || '',
+            name: user.displayName || 'CHAIDE 2026',
+            role: 'admin',
+            avatarUrl: user.photoURL || undefined,
+          });
+        } else {
+          logout();
+        }
+        setIsReady(true);
+      });
+    }).catch(() => {
+      logout();
+      setIsReady(true);
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [login, logout]);
+
+  // Authentication only protects the administrator. Public catalogue and
+  // viewer routes must never wait for Firebase Auth: browsers that block or
+  // delay its persistence callback were otherwise left on a white spinner.
+  const requiresAuthenticatedBootstrap = location.pathname.startsWith('/admin');
+  return !requiresAuthenticatedBootstrap || isReady ? children : <RouteFallback />;
+}
+
 function App() {
   const Router = isStaticSite ? HashRouter : BrowserRouter;
   const routerProps = isStaticSite
@@ -31,24 +81,26 @@ function App() {
   return (
     <ReactLenis root>
       <Router {...routerProps}>
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            {/* Main app wrapper with Sidebar */}
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<LibraryHome />} />
-              <Route path="/admin" element={isStaticSite ? <Navigate to="/" replace /> : <AdminDashboard />} />
-              <Route path="/buscar" element={<SearchResultsPage />} />
-              <Route path="/categoria/:slug" element={<CategoryPage />} />
-              <Route path="/categorias" element={<CategoriesPage />} />
-              <Route path="/catalogos" element={<AllCatalogsPage />} />
-              <Route path="/acerca-de" element={<AboutPage />} />
-              <Route path="/viewer/:id" element={<ViewerPage />} />
-            </Route>
-            
-            {/* Auth routes and standalone apps */}
-            <Route path="/login" element={isStaticSite ? <Navigate to="/" replace /> : <LoginPage />} />
-          </Routes>
-        </Suspense>
+        <FirebaseAuthBootstrap>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              {/* Main app wrapper with Sidebar */}
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<LibraryHome />} />
+                <Route path="/admin" element={isStaticSite ? <Navigate to="/" replace /> : <AdminDashboard />} />
+                <Route path="/buscar" element={<SearchResultsPage />} />
+                <Route path="/categoria/:slug" element={<CategoryPage />} />
+                <Route path="/categorias" element={<CategoriesPage />} />
+                <Route path="/catalogos" element={<AllCatalogsPage />} />
+                <Route path="/acerca-de" element={<AboutPage />} />
+                <Route path="/viewer/:id" element={<ViewerPage />} />
+              </Route>
+
+              {/* Auth routes and standalone apps */}
+              <Route path="/login" element={isStaticSite ? <Navigate to="/" replace /> : <LoginPage />} />
+            </Routes>
+          </Suspense>
+        </FirebaseAuthBootstrap>
       </Router>
     </ReactLenis>
   );

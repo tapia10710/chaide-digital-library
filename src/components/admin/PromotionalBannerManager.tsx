@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Image, Link, Loader2, Smartphone, Upload } from 'lucide-react';
 import { PromotionalBannerConfig, useStore } from '../../store/useStore';
+import { normalizeDestinationUrl } from '../../lib/linkUtils';
 
 const EMPTY_BANNER: PromotionalBannerConfig = {
   imageUrl: '',
@@ -126,7 +127,7 @@ export default function PromotionalBannerManager() {
         mobileImageUrl: form.mobileImageUrl?.trim() || '',
         mobileIsActive: Boolean(form.mobileIsActive),
         altText: form.altText.trim(),
-        targetUrl: form.targetUrl?.trim() || '',
+        targetUrl: normalizeDestinationUrl(form.targetUrl),
       });
       setStatusMessage('Banner promocional actualizado.');
     } catch (error) {
@@ -202,8 +203,8 @@ export default function PromotionalBannerManager() {
                 placeholder="https://www.tu-sitio.com"
               />
               <span className="mt-1.5 block text-xs text-gray-500">
-                Pega un enlace externo (https://...) y el banner abrirá ese sitio en una pestaña nueva.
-                También puedes usar una ruta interna como /viewer/ID.
+                Puedes pegar https://..., www.chaide.com o chaide.com; los dominios externos se abrirán en una pestaña nueva.
+                Las rutas internas deben comenzar con /, por ejemplo /viewer/ID.
               </span>
             </label>
           </div>

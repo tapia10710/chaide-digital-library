@@ -1,6 +1,26 @@
 # 06 — Despliegue y respaldo
 
-> **Aviso de actualización manual:** comandos, rutas, responsables y fechas deben comprobarse antes de cada despliegue. Este documento no ejecuta ni programa respaldos. Última revisión manual: **17 de julio de 2026**.
+> **Aviso de actualización manual:** comandos, rutas, responsables y fechas deben comprobarse antes de cada despliegue. Este documento no ejecuta ni programa respaldos. Última revisión manual: **19 de julio de 2026**.
+
+## Producción Firebase vigente
+
+- Sitio: `https://biblioteca-catalogos-chaide.web.app`
+- Firestore guarda fichas dinámicas, PDFs por versiones y texto de búsqueda por página.
+- Google Drive conserva un respaldo verificado de cada PDF.
+- La publicación administrativa valida estructura, páginas y texto antes de activar la ficha.
+- Los PDFs grandes se suben y recuperan por bloques; no se envían en una sola respuesta.
+
+Validación y despliegue:
+
+```bash
+npm run lint
+npm run verify:pdfs
+npm run build:firebase
+npx firebase-tools deploy --only firestore:rules,hosting --project biblioteca-catalogos-chaide
+```
+
+Las pruebas administrativas requieren variables locales ignoradas por Git. Nunca se debe
+guardar una contraseña o token en el repositorio.
 
 ## Requisitos
 
@@ -245,3 +265,44 @@ Un respaldo no se considera válido hasta haber completado una restauración de 
 - [ ] No hay errores nuevos críticos en logs.
 - [ ] El volumen sigue montado.
 - [ ] Se registró versión, respaldo y resultado.
+
+## Despliegue vigente en Firebase
+
+```powershell
+npm ci
+npm run lint
+npm run build:firebase
+npx firebase-tools deploy --only firestore:rules,firestore:indexes --project biblioteca-catalogos-chaide
+npx firebase-tools deploy --only hosting --project biblioteca-catalogos-chaide
+```
+
+La compilación genera la aplicación, índices, cMaps y PDF históricos. `.env.firebase` es local y no debe subirse.
+
+- `scripts/migrate-firestore.mjs` restaura metadatos desde `data/db.json`.
+- `scripts/verify-firestore-viewer.mjs` reconstruye un PDF temporal desde Firestore, lo abre con PDF.js y lo elimina.
+
+Respaldo: Git conserva código y datos iniciales; Hosting conserva PDF históricos; Firestore contiene metadatos y PDF nuevos; Drive conserva la copia adicional y las imágenes administrativas.
+
+Antes de cada despliegue o cambio masivo se debe generar el respaldo versionable:
+
+```powershell
+npm run backup:firestore
+```
+
+El resultado se guarda en `backups/firestore-latest.json`. No contiene contraseñas, tokens ni los bytes completos de los PDF; conserva los identificadores de Drive necesarios para reconstruirlos. Las credenciales y copias privadas deben permanecer únicamente en `.env.firebase` o `backups/private/`, ambas fuera de Git.
+
+Los nuevos documentos se crean como borradores privados. El administrador debe abrir su edición, validar portada, visor, índice y metadatos, y cambiar su visibilidad a pública cuando estén aprobados.
+
+GitHub Actions ejecuta compilación, TypeScript y validación de PDFs. El despliegue automático de Hosting se activa al configurar el secreto `FIREBASE_SERVICE_ACCOUNT_BIBLIOTECA_CATALOGOS_CHAIDE`; sin ese secreto, la verificación continúa funcionando y el despliegue se realiza con los comandos anteriores.
+## Publicación validada de un PDF
+
+1. Validar título, descripción, categoría, tamaño y firma PDF.
+2. Comprobar todas las páginas y calcular `pageCount`.
+3. Extraer y limpiar el texto por página.
+4. Guardar la versión del índice en Firestore.
+5. Guardar los fragmentos del PDF y su manifiesto.
+6. Crear el respaldo de Drive y la portada cuando estén disponibles.
+7. Guardar el documento como `ready` con la versión de índice vigente, `driveFileId`, `coverFileId` e índice lateral.
+8. Actualizar la biblioteca y ejecutar `npm run verify:pdfs`.
+
+La eliminación desde el administrador borra primero y de forma secuencial el PDF y la portada administrados en Drive. El puente verifica que pertenezcan a la carpeta de respaldo y los elimina definitivamente, porque una copia pública enviada solamente a la papelera puede continuar accesible mediante su enlace anterior.

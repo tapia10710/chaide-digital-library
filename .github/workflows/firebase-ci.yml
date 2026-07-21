@@ -1,0 +1,40 @@
+name: Verify and deploy Firebase site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency:
+  group: firebase-production
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      HAS_FIREBASE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BIBLIOTECA_CATALOGOS_CHAIDE != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run verify:pdfs
+      - run: npm run build:firebase
+
+      - name: Deploy Firebase Hosting
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.HAS_FIREBASE_KEY == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BIBLIOTECA_CATALOGOS_CHAIDE }}
+          channelId: live
+          projectId: biblioteca-catalogos-chaide

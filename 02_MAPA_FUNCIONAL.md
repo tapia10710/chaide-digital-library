@@ -188,3 +188,20 @@ Todas las rutas de escritura requieren `requireAdmin`.
 - Documento `isActive: false`: se excluye de la vista pública.
 - Banner `isActive: false`: no se presenta.
 - Banner móvil: se utiliza solo cuando `mobileIsActive` y `mobileImageUrl` lo permiten.
+
+## Recorridos vigentes en Firebase
+
+```text
+Inicio → Firestore → catálogo → /viewer/:id
+  → PDF histórico: /storage/*.pdf
+  → PDF nuevo: reconstrucción desde Firestore
+  → visor profesional PDF.js
+```
+
+Todos los PDF publicados utilizan el visor integrado. Google Drive no se utiliza como visor principal.
+
+```text
+/login → usuario y contraseña → Firebase Authentication → reglas Firestore → /admin
+```
+
+Al publicar un PDF nuevo, la aplicación lo divide en fragmentos seguros para Firestore, publica el manifiesto y crea un respaldo adicional en Google Drive cuando el puente está disponible.

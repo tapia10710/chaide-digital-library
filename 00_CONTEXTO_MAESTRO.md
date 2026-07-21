@@ -127,3 +127,15 @@ Quien apruebe o implemente una modificación debe, en la misma rama o pull reque
 3. Añadir una entrada en `05_REGISTRO_DE_CAMBIOS.md`.
 4. Marcar como resuelto, movido o nuevo cualquier pendiente de `01_PLAN_DE_TRABAJO.md`.
 5. Confirmar si el cambio requiere nuevo respaldo, variable de entorno o instrucción de despliegue.
+
+## Estado vigente: Firebase — 2026-07-17
+
+La producción pública vigente está en `https://biblioteca-catalogos-chaide.web.app`.
+
+- Firebase Hosting entrega la aplicación, portadas y los 21 PDF históricos.
+- Cloud Firestore almacena documentos, categorías, banner y PDF nuevos fragmentados.
+- Firebase Authentication con usuario y contraseña protege la administración.
+- Google Drive mediante Apps Script respalda PDF nuevos y aloja imágenes administrativas.
+- PDF.js y el visor profesional existente abren todos los PDF. Los históricos se leen desde `/storage/`; los nuevos se reconstruyen desde `pdfFiles/{id}/chunks`.
+
+Las secciones anteriores sobre Docker se conservan como alternativa de autohospedaje y reversión. Firebase es el despliegue público principal. Las reglas abiertas de Firestore ya fueron sustituidas: las lecturas se limitan a las colecciones del catálogo y todas las escrituras requieren una cuenta autenticada, verificada y autorizada.

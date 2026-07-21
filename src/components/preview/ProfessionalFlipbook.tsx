@@ -11,28 +11,39 @@ import {
   Maximize2, 
   Minimize2, 
   X, 
-  FileWarning, 
   Home, 
   ArrowLeft, 
   Menu,
   ChevronUp, 
   ChevronDown, 
   List as ListIcon, 
-  LayoutGrid
+  LayoutGrid,
+  Library
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
 import { formatFileSize, sortPdfDocumentsFirst } from '../../lib/viewerUtils';
-import { getCachedPdfData } from '../../lib/backgroundIndexer';
+import { getCachedPdfData, setCachedPdfData } from '../../lib/backgroundIndexer';
+import { loadPersistedCatalogSearchIndex } from '../../lib/catalogSearchIndex';
 import { buildIndexFromPdfDocument } from '../../lib/pdfIndexerService';
 import {
   loadDocument,
   getCachedDocument,
   getRenderedBitmap,
+  invalidateDocument,
   setRenderedBitmap,
 } from '../../lib/pdfCache';
+import {
+  PDF_DOCUMENT_ATTEMPTS,
+  PDF_DOCUMENT_TIMEOUT_MS,
+  PDF_PAGE_RENDER_ATTEMPTS,
+  PDF_PAGE_RENDER_TIMEOUT_MS,
+  isPdfCancellation,
+  waitForRetry,
+  withPdfTimeout,
+} from '../../lib/pdfLoadGuard';
 import CatalogPreviewCard from '../library/CatalogPreviewCard';
 import CatalogViewerDetails from './CatalogViewerDetails';
 
@@ -85,11 +96,9 @@ interface ProfessionalFlipbookProps {
 
 const SEARCH_FOCUS_ZOOM = 1.25;
 
-// Global render concurrency limiter for BACKGROUND pages. The aggressive
-// full-document loader can make dozens of pages want to rasterize at once;
-// without a cap they cancel each other and some end up blank. Visible/priority
-// pages bypass this and render immediately; background pages queue here so a
-// few render at a time and every one completes reliably.
+// Global render concurrency limiter for nearby background pages. Visible pages
+// bypass this and render immediately; preloaded neighbours queue here so they
+// cannot saturate the browser while the user is turning pages.
 const MAX_CONCURRENT_RENDERS = 3;
 let activeRenderCount = 0;
 const renderWaiters: Array<() => void> = [];
@@ -177,7 +186,7 @@ const PdfPage = React.forwardRef<HTMLDivElement, {
   // already rendered before (even in a previous viewing session of the same
   // catalog), draw the cached bitmap immediately so there is no spinner/flash.
   useLayoutEffect(() => {
-    if (rendered || !props.docUrl || !canvasRef.current) return;
+    if (!active || rendered || !props.docUrl || !canvasRef.current) return;
     const cached = getRenderedBitmap(props.docUrl, props.number);
     if (!cached) return;
     const canvas = canvasRef.current;
@@ -192,7 +201,7 @@ const PdfPage = React.forwardRef<HTMLDivElement, {
       ctx.drawImage(cached.bitmap, 0, 0);
       setRendered(true);
     } catch { /* fall back to normal render */ }
-  }, [props.docUrl, props.number, rendered]);
+  }, [active, props.docUrl, props.number, rendered]);
 
   useEffect(() => {
     if (!active || !page || !canvasRef.current || props.width <= 0 || props.height <= 0) return;
@@ -348,50 +357,6 @@ const PdfPage = React.forwardRef<HTMLDivElement, {
   );
 });
 
-type PageActivationJob = {
-  id: string;
-  cancelled: boolean;
-  activate: () => void;
-};
-
-const pageActivationQueue: PageActivationJob[] = [];
-const queuedPageActivations = new Set<string>();
-let pageActivationTimer: number | null = null;
-
-function flushPageActivationQueue() {
-  pageActivationTimer = null;
-  let activated = 0;
-
-  while (pageActivationQueue.length > 0 && activated < 2) {
-    const job = pageActivationQueue.shift()!;
-    queuedPageActivations.delete(job.id);
-    if (job.cancelled) continue;
-    job.activate();
-    activated++;
-  }
-
-  if (pageActivationQueue.length > 0) {
-    pageActivationTimer = window.setTimeout(flushPageActivationQueue, 90);
-  }
-}
-
-function enqueuePageActivation(id: string, activate: () => void) {
-  if (queuedPageActivations.has(id)) return () => undefined;
-
-  const job: PageActivationJob = { id, cancelled: false, activate };
-  queuedPageActivations.add(id);
-  pageActivationQueue.push(job);
-
-  if (pageActivationTimer === null) {
-    pageActivationTimer = window.setTimeout(flushPageActivationQueue, 60);
-  }
-
-  return () => {
-    job.cancelled = true;
-    queuedPageActivations.delete(id);
-  };
-}
-
 type QueuedPdfPageElement = HTMLDivElement & {
   ensurePdfPage?: () => void;
 };
@@ -406,7 +371,6 @@ type QueuedPdfPageProps = {
   zoom: number;
   eager: boolean;
   priority: boolean;
-  loadAll: boolean;
   docUrl?: string;
 };
 
@@ -414,14 +378,19 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
   const rootRef = useRef<QueuedPdfPageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
+  const releaseTimerRef = useRef<number | null>(null);
+  const recoveryTimerRef = useRef<number | null>(null);
+  const recoveryCycleRef = useRef(0);
   const lastRenderScaleRef = useRef(0);
   const isRenderingRef = useRef(false);
   const renderedRef = useRef(false);
-  const [queuedActive, setQueuedActive] = useState(props.eager);
+  const [forcedActive, setForcedActive] = useState(false);
   const [page, setPage] = useState<pdfjsLib.PDFPageProxy | null>(null);
   const [rendered, setRendered] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [renderTry, setRenderTry] = useState(0);
   const [renderAttempt, setRenderAttempt] = useState(0);
-  const active = props.eager || queuedActive;
+  const active = props.eager || forcedActive;
 
   const setRootNode = useCallback((node: QueuedPdfPageElement | null) => {
     rootRef.current = node;
@@ -440,16 +409,25 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
   }, [rendered]);
 
   useEffect(() => {
-    if (props.eager) setQueuedActive(true);
-  }, [props.eager]);
-
-  useEffect(() => {
-    if (!props.loadAll || props.eager || queuedActive || !props.docUrl) return;
-    return enqueuePageActivation(
-      `${props.docUrl}:${props.number}`,
-      () => setQueuedActive(true),
-    );
-  }, [props.docUrl, props.eager, props.loadAll, props.number, queuedActive]);
+    if (props.eager) {
+      if (releaseTimerRef.current !== null) {
+        window.clearTimeout(releaseTimerRef.current);
+        releaseTimerRef.current = null;
+      }
+      return;
+    }
+    if (!forcedActive) return;
+    releaseTimerRef.current = window.setTimeout(() => {
+      releaseTimerRef.current = null;
+      setForcedActive(false);
+    }, 1500);
+    return () => {
+      if (releaseTimerRef.current !== null) {
+        window.clearTimeout(releaseTimerRef.current);
+        releaseTimerRef.current = null;
+      }
+    };
+  }, [forcedActive, props.eager]);
 
   useEffect(() => {
     const node = rootRef.current;
@@ -457,7 +435,8 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
 
     node.ensurePdfPage = () => {
       if (renderedRef.current || isRenderingRef.current) return;
-      setQueuedActive(true);
+      setForcedActive(true);
+      setRenderError(null);
       setRenderAttempt((attempt) => attempt + 1);
     };
 
@@ -467,16 +446,70 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
   }, []);
 
   useEffect(() => {
+    if (active) return;
+    if (recoveryTimerRef.current !== null) {
+      window.clearTimeout(recoveryTimerRef.current);
+      recoveryTimerRef.current = null;
+    }
+    recoveryCycleRef.current = 0;
+    renderTaskRef.current?.cancel?.();
+    renderTaskRef.current = null;
+    isRenderingRef.current = false;
+    lastRenderScaleRef.current = 0;
+    setPage(null);
+    setRendered(false);
+    setRenderError(null);
+    setRenderTry(0);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.width = 1;
+      canvas.height = 1;
+    }
+  }, [active]);
+
+  useEffect(() => () => {
+    if (recoveryTimerRef.current !== null) {
+      window.clearTimeout(recoveryTimerRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!active || !props.pdf || page) return;
 
     let current = true;
-    props.pdf.getPage(props.number)
-      .then((pdfPage) => {
-        if (current) setPage(pdfPage);
-      })
-      .catch((error) => {
-        console.warn(`Error getting page ${props.number}:`, error);
-      });
+    const getPage = async () => {
+      let lastError: unknown = null;
+      for (let attempt = 1; attempt <= PDF_PAGE_RENDER_ATTEMPTS && current; attempt++) {
+        setRenderTry(attempt);
+        try {
+          const pdfPage = await withPdfTimeout(
+            props.pdf!.getPage(props.number),
+            PDF_PAGE_RENDER_TIMEOUT_MS,
+            `La página ${props.number}`,
+          );
+          if (current) {
+            setPage(pdfPage);
+            setRenderError(null);
+          }
+          return;
+        } catch (error) {
+          lastError = error;
+          if (attempt < PDF_PAGE_RENDER_ATTEMPTS) await waitForRetry(attempt);
+        }
+      }
+      if (!current) return;
+      const message = lastError instanceof Error ? lastError.message : 'No se pudo leer esta página.';
+      setRenderError(message);
+      recoveryCycleRef.current += 1;
+      const recoveryDelay = Math.min(2500 * 2 ** (recoveryCycleRef.current - 1), 15_000);
+      recoveryTimerRef.current = window.setTimeout(() => {
+        recoveryTimerRef.current = null;
+        if (!current) return;
+        setRenderError(null);
+        setRenderAttempt((attempt) => attempt + 1);
+      }, recoveryDelay);
+    };
+    void getPage();
 
     return () => {
       current = false;
@@ -484,7 +517,7 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
   }, [active, page, props.number, props.pdf, renderAttempt]);
 
   useLayoutEffect(() => {
-    if (rendered || !props.docUrl || !canvasRef.current) return;
+    if (!active || rendered || !props.docUrl || !canvasRef.current) return;
     const cached = getRenderedBitmap(props.docUrl, props.number);
     if (!cached) return;
 
@@ -503,7 +536,7 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
     } catch {
       // The bitmap may have been evicted between lookup and paint.
     }
-  }, [props.docUrl, props.number, rendered]);
+  }, [active, props.docUrl, props.number, rendered]);
 
   useEffect(() => {
     if (!active || !page || !canvasRef.current || props.width <= 0 || props.height <= 0) return;
@@ -516,6 +549,17 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
       if (useLimiter) await acquireRenderSlot();
 
       try {
+        if (!current || !canvasRef.current) return;
+
+        // pdf.js keeps ownership of a canvas until a cancelled render promise
+        // has actually settled. Wait for the previous task before reusing the
+        // same canvas when page priority changes during navigation.
+        const previousTask = renderTaskRef.current;
+        if (previousTask) {
+          try { previousTask.cancel?.(); } catch { /* noop */ }
+          try { await previousTask.promise; } catch { /* cancellation expected */ }
+          if (renderTaskRef.current === previousTask) renderTaskRef.current = null;
+        }
         if (!current || !canvasRef.current) return;
 
         const baseViewport = page.getViewport({ scale: 1 });
@@ -544,16 +588,47 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
         canvas.style.height = '100%';
         canvas.style.objectFit = 'contain';
 
-        renderTaskRef.current?.cancel?.();
-        renderTaskRef.current = page.render({ canvasContext: context, viewport });
+        setRenderError(null);
         isRenderingRef.current = true;
-        await renderTaskRef.current.promise;
-        renderTaskRef.current = null;
+        let completed = false;
+        let lastError: unknown = null;
+
+        for (let attempt = 1; attempt <= PDF_PAGE_RENDER_ATTEMPTS && current; attempt++) {
+          setRenderTry(attempt);
+          let attemptTask: any = null;
+          try {
+            const task = page.render({ canvasContext: context, viewport });
+            attemptTask = task;
+            renderTaskRef.current = task;
+            await withPdfTimeout(
+              task.promise,
+              PDF_PAGE_RENDER_TIMEOUT_MS,
+              `La página ${props.number}`,
+              () => task.cancel?.(),
+            );
+            if (renderTaskRef.current === task) renderTaskRef.current = null;
+            completed = true;
+            break;
+          } catch (error) {
+            lastError = error;
+            const failedTask = attemptTask;
+            if (failedTask) {
+              try { await failedTask.promise; } catch { /* already reported below */ }
+              if (renderTaskRef.current === failedTask) renderTaskRef.current = null;
+            }
+            if (!current || isPdfCancellation(error)) return;
+            if (attempt < PDF_PAGE_RENDER_ATTEMPTS) await waitForRetry(attempt);
+          }
+        }
+
+        if (!completed) throw lastError || new Error(`No se pudo dibujar la página ${props.number}.`);
 
         if (!current) return;
 
         lastRenderScaleRef.current = renderScale;
         setRendered(true);
+        setRenderTry(0);
+        recoveryCycleRef.current = 0;
 
         if (props.docUrl && typeof createImageBitmap === 'function') {
           const width = canvas.width;
@@ -563,8 +638,19 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
             .catch(() => undefined);
         }
       } catch (error: any) {
-        if (error?.name !== 'RenderingCancelledException') {
+        if (!isPdfCancellation(error)) {
           console.error(`Page ${props.number} render error:`, error);
+          if (current) {
+            setRenderError(error instanceof Error ? error.message : 'No se pudo cargar esta página.');
+            recoveryCycleRef.current += 1;
+            const recoveryDelay = Math.min(2500 * 2 ** (recoveryCycleRef.current - 1), 15_000);
+            recoveryTimerRef.current = window.setTimeout(() => {
+              recoveryTimerRef.current = null;
+              if (!current) return;
+              setRenderError(null);
+              setRenderAttempt((attempt) => attempt + 1);
+            }, recoveryDelay);
+          }
         }
       } finally {
         isRenderingRef.current = false;
@@ -604,9 +690,26 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
       data-pdf-page={props.number}
       data-pdf-rendered={rendered ? 'true' : 'false'}
     >
-      {!rendered ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50/50">
-          <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+      {active && renderError ? (
+        <div className="absolute inset-0 z-20 flex flex-col gap-3 items-center justify-center bg-red-50/95 px-6 text-center">
+          <div className="w-7 h-7 border-2 border-red-200 border-t-red-500 rounded-full animate-spin" />
+          <strong className="text-xs text-gray-900">Recuperando la página {props.number}…</strong>
+          <span className="max-w-xs text-[10px] text-gray-500">{renderError}</span>
+          <span className="text-[9px] font-semibold text-red-500">
+            Reintento automático en curso
+          </span>
+        </div>
+      ) : active && !rendered ? (
+        <div className="absolute inset-0 flex flex-col gap-3 items-center justify-center bg-gray-50/90">
+          <div className="w-7 h-7 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+          <span className="text-[10px] font-semibold tracking-wide text-gray-400">
+            Cargando página {props.number}…
+          </span>
+          {renderTry > 1 ? (
+            <span className="text-[9px] text-gray-400">
+              Reintento {renderTry} de {PDF_PAGE_RENDER_ATTEMPTS}
+            </span>
+          ) : null}
         </div>
       ) : null}
 
@@ -660,7 +763,6 @@ const QueuedPdfPage = React.memo(QueuedPdfPageBase, (previous, next) => {
     previous.zoom === next.zoom &&
     previous.eager === next.eager &&
     previous.priority === next.priority &&
-    previous.loadAll === next.loadAll &&
     previous.docUrl === next.docUrl &&
     previous.isActiveMatchPage === next.isActiveMatchPage &&
     highlightsUnchanged
@@ -759,6 +861,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const [pdfPageSize, setPdfPageSize] = useState({ width: 0, height: 0 });
   const [currentPage, setCurrentPage] = useState(0); // 0-based for flipbook
   const [loadProgress, setLoadProgress] = useState(0);
+  const [loadAttempt, setLoadAttempt] = useState(1);
+  const [reloadToken, setReloadToken] = useState(0);
   const [loading, setLoading] = useState(true);
   const [readyToRender, setReadyToRender] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -766,6 +870,10 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const [zoomOrigin, setZoomOrigin] = useState({ x: '50%', y: '50%' });
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
+  // While a page turn is being prepared, render the destination spread first.
+  // Without this separate focus, react-pageflip can reveal an inactive 1x1
+  // canvas and leave an apparently blank page on large catalogues.
+  const [renderFocusPage, setRenderFocusPage] = useState<number | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -787,6 +895,12 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const activePointers = useRef<Map<number, { x: number, y: number, time: number }>>(new Map());
   const lastTapRef = useRef<{ x: number, y: number, time: number } | null>(null);
   const singleTapTimerRef = useRef<number | null>(null);
+  const navigationUnlockTimerRef = useRef<number | null>(null);
+  const navigationRetryTimerRef = useRef<number | null>(null);
+  const documentRecoveryTimerRef = useRef<number | null>(null);
+  const documentRecoveryCycleRef = useRef(0);
+  const navigationLockedRef = useRef(false);
+  const initialProcessedRef = useRef(false);
   const isSwipingRef = useRef(false);
   const isPanningRef = useRef(false);
   const startPanRef = useRef({ x: 0, y: 0 });
@@ -823,6 +937,33 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       singleTapTimerRef.current = null;
     }
   };
+
+  const clearNavigationLock = useCallback(() => {
+    navigationLockedRef.current = false;
+    if (navigationUnlockTimerRef.current !== null) {
+      window.clearTimeout(navigationUnlockTimerRef.current);
+      navigationUnlockTimerRef.current = null;
+    }
+  }, []);
+
+  const beginNavigation = useCallback(() => {
+    if (navigationLockedRef.current) return false;
+    navigationLockedRef.current = true;
+    navigationUnlockTimerRef.current = window.setTimeout(clearNavigationLock, 6500);
+    return true;
+  }, [clearNavigationLock]);
+
+  useEffect(() => () => {
+    clearPendingSingleTap();
+    clearNavigationLock();
+    if (navigationRetryTimerRef.current !== null) {
+      window.clearTimeout(navigationRetryTimerRef.current);
+    }
+    if (documentRecoveryTimerRef.current !== null) {
+      window.clearTimeout(documentRecoveryTimerRef.current);
+    }
+    activePointers.current.clear();
+  }, [clearNavigationLock]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (isInteractiveElement(e.target)) return;
@@ -999,29 +1140,6 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const [isThumbnailPanelOpen, setIsThumbnailPanelOpen] = useState(false);
   const [thumbnailCache, setThumbnailCache] = useState<Map<number, string>>(new Map());
   const [pageInput, setPageInput] = useState('1');
-  const [loadAll, setLoadAll] = useState(false);
-
-  // This switch changes once per document. Individual pages then enter the
-  // module-level queue without updating the parent or destabilizing page-flip.
-  useEffect(() => {
-    if (!pdf || loading || !numPages || loadAll) return;
-
-    const requestIdle = (window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    }).requestIdleCallback;
-    const cancelIdle = (window as Window & {
-      cancelIdleCallback?: (id: number) => void;
-    }).cancelIdleCallback;
-
-    if (requestIdle) {
-      const idleId = requestIdle(() => setLoadAll(true), { timeout: 1500 });
-      return () => cancelIdle?.(idleId);
-    }
-
-    const timer = window.setTimeout(() => setLoadAll(true), 700);
-    return () => window.clearTimeout(timer);
-  }, [loadAll, loading, numPages, pdf]);
 
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isSearchResultsSheetOpen, setIsSearchResultsSheetOpen] = useState(false);
@@ -1105,13 +1223,35 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     let isMounted = true;
 
     const loadDoc = async () => {
+      clearNavigationLock();
+      if (navigationRetryTimerRef.current !== null) {
+        window.clearTimeout(navigationRetryTimerRef.current);
+        navigationRetryTimerRef.current = null;
+      }
+      initialProcessedRef.current = false;
+      setCurrentPage(0);
+      setRenderFocusPage(null);
+      setPageInput('1');
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      setZoomOrigin({ x: '50%', y: '50%' });
+      setSearchQuery('');
+      setSearchResults([]);
+      setActiveMatchIndex(-1);
+      setHighlightsVisible(false);
+      setFullText([]);
+      setIndexItems([]);
+      setIndexStatus('empty');
+      setIndexSource(null);
+      setExpandedIndexItems(new Set());
+      setThumbnailCache(new Map());
       setLoading(true);
+      setLoadAttempt(1);
       setError(null);
       setLoadProgress(0);
       setReadyToRender(false);
       setPdf(null);
       setNumPages(0);
-      setLoadAll(false);
       try {
         // Enforce absolute URL for PDF.js loading
         if (!url || typeof url !== 'string') throw new Error("URL de PDF no válida");
@@ -1125,12 +1265,33 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         const cachedNow = getCachedDocument(absoluteUrl);
         if (cachedNow) setLoadProgress(100);
 
-        const pdfDoc = await loadDocument(absoluteUrl, (progress) => {
-          if (progress.total > 0) {
-            const percent = Math.round((progress.loaded / progress.total) * 100);
-            if (isMounted) setLoadProgress(percent);
+        let pdfDoc: pdfjsLib.PDFDocumentProxy | null = null;
+        let lastLoadError: unknown = null;
+        for (let attempt = 1; attempt <= PDF_DOCUMENT_ATTEMPTS && isMounted; attempt++) {
+          setLoadAttempt(attempt);
+          try {
+            pdfDoc = await withPdfTimeout(
+              loadDocument(absoluteUrl, (progress) => {
+                if (progress.total > 0) {
+                  const percent = Math.round((progress.loaded / progress.total) * 100);
+                  if (isMounted) setLoadProgress(percent);
+                }
+              }),
+              PDF_DOCUMENT_TIMEOUT_MS,
+              'El catálogo',
+              () => invalidateDocument(absoluteUrl),
+            );
+            break;
+          } catch (loadError) {
+            lastLoadError = loadError;
+            invalidateDocument(absoluteUrl);
+            if (attempt < PDF_DOCUMENT_ATTEMPTS) {
+              setLoadProgress(0);
+              await waitForRetry(attempt);
+            }
           }
-        });
+        }
+        if (!pdfDoc) throw lastLoadError || new Error('No se pudo abrir el catálogo.');
         console.log('PDF cargado con éxito. Páginas:', pdfDoc.numPages);
         
         if (!isMounted) return;
@@ -1143,6 +1304,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         setPdf(pdfDoc);
         setNumPages(pdfDoc.numPages);
         setLoading(false);
+        documentRecoveryCycleRef.current = 0;
 
         // Reuse existing metadata without starting OCR or parsing every page.
         if (currentDoc) {
@@ -1164,6 +1326,21 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
               }
             }
           });
+
+          loadPersistedCatalogSearchIndex(currentDoc).then((pages) => {
+            if (!isMountedRef.current || pages.length === 0) return;
+            const persistedText = pages.map((page) => ({
+              page: page.pageNumber,
+              text: page.text,
+            }));
+            setFullText(persistedText);
+            void setCachedPdfData(currentDoc.id, {
+              items: currentDoc.indexItems || [],
+              fullText: persistedText,
+              lastIndexed: new Date().toISOString(),
+              indexVersion: currentDoc.searchIndexVersion || 'persisted',
+            });
+          }).catch(() => undefined);
         }
 
         // Thumbnails are now rendered lazily on demand (LazyPdfPageThumbnail
@@ -1175,7 +1352,16 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         if (isMounted) {
           const detail = err.message || 'Error desconocido';
           setError(`No se pudo visualizar el PDF. ${detail}. Verifique el enlace o la configuración de CORS.`);
-          setLoading(false);
+          setLoading(true);
+          documentRecoveryCycleRef.current += 1;
+          const recoveryDelay = Math.min(
+            5000 * 2 ** (documentRecoveryCycleRef.current - 1),
+            30_000,
+          );
+          documentRecoveryTimerRef.current = window.setTimeout(() => {
+            documentRecoveryTimerRef.current = null;
+            if (isMounted) setReloadToken((token) => token + 1);
+          }, recoveryDelay);
         }
       }
     };
@@ -1183,22 +1369,33 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     if (url) loadDoc();
     return () => {
       isMounted = false;
+      if (documentRecoveryTimerRef.current !== null) {
+        window.clearTimeout(documentRecoveryTimerRef.current);
+        documentRecoveryTimerRef.current = null;
+      }
       // Intentionally DO NOT destroy the document here: the shared pdfCache
       // keeps it (and its rendered bitmaps) alive so returning to this catalog
       // is instant. The cache's LRU handles eventual cleanup.
     };
-  }, [currentDoc, url]);
+  }, [documentId, url, reloadToken, clearNavigationLock]);
 
   // Resize handling
   useEffect(() => {
+    let animationFrame = 0;
     const measure = () => {
-      if (mainAreaRef.current) {
-        const width = mainAreaRef.current.clientWidth;
-        const height = mainAreaRef.current.clientHeight;
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        if (!mainAreaRef.current) return;
+        const width = Math.round(mainAreaRef.current.clientWidth);
+        const height = Math.round(mainAreaRef.current.clientHeight);
         if (width > 0 && height > 0) {
-          setContainerSize({ width, height });
+          setContainerSize((previous) => (
+            Math.abs(previous.width - width) < 2 && Math.abs(previous.height - height) < 2
+              ? previous
+              : { width, height }
+          ));
         }
-      }
+      });
     };
 
     // Initial measure with fallback to viewport if ref not ready
@@ -1221,6 +1418,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
 
     window.addEventListener('resize', measure);
     return () => {
+      window.cancelAnimationFrame(animationFrame);
       observer.disconnect();
       window.removeEventListener('resize', measure);
     };
@@ -1289,27 +1487,28 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   }, [pdf, dimensions]);
 
   // Handle initial page and search from props
-  const initialProcessedRef = useRef(false);
-
   useEffect(() => {
     if (readyToRender && pdf && !initialProcessedRef.current) {
       initialProcessedRef.current = true;
+      const timers: number[] = [];
       
       // Go to initial page
       if (initialPage && initialPage > 1) {
-        setTimeout(() => {
+        timers.push(window.setTimeout(() => {
           goToPage(initialPage);
-        }, 300);
+        }, 300));
       }
 
       // Run initial search
       if (initialSearch) {
-        setTimeout(() => {
+        timers.push(window.setTimeout(() => {
           setSearchQuery(initialSearch);
           performSearch(initialSearch, initialPage);
           setSearchOpen(true);
-        }, 500);
+        }, 500));
       }
+
+      return () => timers.forEach((timer) => window.clearTimeout(timer));
     }
   }, [readyToRender, pdf, initialPage, initialSearch]);
 
@@ -1630,28 +1829,28 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   };
 
   const goToPage = (num: number, skipZoomReset = false) => {
+    if (!Number.isFinite(num)) return;
     if (!skipZoomReset) resetZoom();
 
     const total = numPages || 1;
-    const safePage = Math.min(Math.max(num, 1), total);
+    const safePage = Math.min(Math.max(Math.trunc(num), 1), total);
     setPageInput(safePage.toString());
-    verifyPageWindow(safePage - 1);
 
     if (!dimensions?.isDoublePage) {
       setCurrentPage(safePage - 1);
       return;
     }
+
+    if (!beginNavigation()) return;
     
-    // User's specific logic for flip index
-    let flipIndex = 0;
-    if (safePage > 1) {
-      // For showCover=true:
-      // Page 1 is index 0.
-      // Page 2 is index 1.
-      // Page 3 is index 2.
-      // Jumping to index 1 or 2 should show the 2-3 spread.
-      flipIndex = safePage - 1;
-    }
+    // With showCover=true, page 1 is alone and subsequent pages are spreads:
+    // 2-3, 4-5, etc. Always target the left page of the requested spread.
+    const flipIndex = safePage === 1
+      ? 0
+      : (safePage % 2 === 0 ? safePage - 1 : safePage - 2);
+
+    setRenderFocusPage(flipIndex);
+    verifyPageWindow(flipIndex);
 
     const turnFlipbookToPage = () => {
       const pageFlipInstance = bookRef.current?.pageFlip?.();
@@ -1665,9 +1864,41 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       return false;
     };
 
-    if (!turnFlipbookToPage()) {
-      setTimeout(turnFlipbookToPage, 300);
-    }
+    const destinationPages = flipIndex === 0
+      ? [1]
+      : [flipIndex + 1, Math.min(flipIndex + 2, total)];
+    const startedAt = performance.now();
+
+    const turnWhenReady = () => {
+      verifyPageWindow(flipIndex);
+      const root = mainAreaRef.current;
+      const ready = !!root && destinationPages.every((pageNumber) => {
+        const nodes = root.querySelectorAll(
+          `[data-pdf-page="${pageNumber}"]`,
+        ) as NodeListOf<QueuedPdfPageElement>;
+        let pageReady = false;
+        nodes.forEach((node) => {
+          if (node.dataset.pdfRendered === 'true') pageReady = true;
+        });
+        return pageReady;
+      });
+
+      // The automatic recovery UI remains visible if a very complex page takes
+      // longer than five seconds, but navigation can no longer get permanently
+      // locked waiting for it.
+      if (ready || performance.now() - startedAt >= 5000) {
+        setCurrentPage(flipIndex);
+        setPageInput((flipIndex + 1).toString());
+        window.requestAnimationFrame(() => {
+          if (!turnFlipbookToPage()) clearNavigationLock();
+        });
+        return;
+      }
+
+      navigationRetryTimerRef.current = window.setTimeout(turnWhenReady, 100);
+    };
+
+    window.requestAnimationFrame(turnWhenReady);
   };
 
   const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1675,8 +1906,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   };
 
   const handlePageInputBlur = () => {
-    const val = parseInt(pageInput);
-    if (!isNaN(val)) {
+    const val = Number.parseInt(pageInput, 10);
+    if (Number.isFinite(val)) {
       goToPage(val);
     } else {
       setPageInput((currentPage + 1).toString());
@@ -1719,7 +1950,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       link.click();
       link.remove();
       
-      URL.revokeObjectURL(blobUrl);
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
       console.warn("Error al descargar via fetch, intentando apertura directa:", error);
       window.open(finalUrl, '_blank', 'noopener,noreferrer');
@@ -1738,6 +1969,14 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     return `${currentPage + 1}-${next + 1} / ${numPages}`;
   }, [currentPage, numPages, dimensions?.isDoublePage]);
 
+  const isAtLastPage = useMemo(() => {
+    if (!dimensions?.isDoublePage) return currentPage >= numPages - 1;
+    const lastSpreadIndex = numPages <= 1
+      ? 0
+      : (numPages % 2 === 0 ? numPages - 1 : numPages - 2);
+    return currentPage >= lastSpreadIndex;
+  }, [currentPage, dimensions?.isDoublePage, numPages]);
+
   const zoomIn = () => setZoom(prev => Math.min(prev + 0.25, 2.5));
   const zoomOut = () => setZoom(prev => Math.max(prev - 0.25, 1));
   const resetZoom = () => {
@@ -1749,7 +1988,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   function goToPreviousPage(skipZoomReset = false) {
     if (!skipZoomReset) resetZoom();
     if (dimensions?.isDoublePage) {
-      bookRef.current?.pageFlip?.()?.flipPrev?.();
+      const targetPage = currentPage <= 1 ? 1 : currentPage - 1;
+      goToPage(targetPage, true);
       return;
     }
 
@@ -1759,7 +1999,12 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   function goToNextPage(skipZoomReset = false) {
     if (!skipZoomReset) resetZoom();
     if (dimensions?.isDoublePage) {
-      bookRef.current?.pageFlip?.()?.flipNext?.();
+      const lastSpreadIndex = numPages <= 1
+        ? 0
+        : (numPages % 2 === 0 ? numPages - 1 : numPages - 2);
+      if (currentPage >= lastSpreadIndex) return;
+      const targetPage = currentPage === 0 ? 2 : currentPage + 3;
+      goToPage(Math.min(numPages || 1, targetPage), true);
       return;
     }
 
@@ -1861,7 +2106,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
 
     const centerPage = Math.min(Math.max(pageIndex + 1, 1), numPages);
     const firstPage = Math.max(1, centerPage - 2);
-    const lastPage = Math.min(numPages, centerPage + 10);
+    const lastPage = Math.min(numPages, centerPage + 4);
 
     const verify = () => {
       for (let pageNumber = firstPage; pageNumber <= lastPage; pageNumber++) {
@@ -1887,13 +2132,11 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const renderPdfPage = (pageNumber: number, key: string) => {
     if (!dimensions) return null;
 
-    const centerPage = currentPage + 1;
+    const centerPage = (renderFocusPage ?? currentPage) + 1;
     const eager =
-      pageNumber <= 2 ||
-      (pageNumber >= centerPage - 2 && pageNumber <= centerPage + 10);
+      pageNumber >= centerPage - 2 && pageNumber <= centerPage + 4;
     const priority =
-      pageNumber <= 2 ||
-      Math.abs(pageNumber - centerPage) <= 2;
+      Math.abs(pageNumber - centerPage) <= 1;
 
     const pageHighlights = highlightsVisible ? (searchResults || [])
       .filter(res => res && res.pageNumber === pageNumber)
@@ -1912,7 +2155,6 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         zoom={zoom}
         eager={eager}
         priority={priority}
-        loadAll={loadAll}
         docUrl={docCacheKey}
         highlights={pageHighlights}
         isActiveMatchPage={activeMatchIndex !== -1 && searchResults[activeMatchIndex] && searchResults[activeMatchIndex].pageNumber === pageNumber}
@@ -2045,7 +2287,19 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
             </div>
 
             <div className="pdf-toolbar-actions">
-              <button onClick={() => setSearchOpen(!searchOpen)} className={cn(searchOpen && "bg-gray-100")} title="Buscar">
+              <button
+                onClick={() => navigate('/buscar')}
+                title="Buscar en toda la biblioteca"
+                aria-label="Buscar en toda la biblioteca"
+              >
+                <Library className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setSearchOpen(!searchOpen)}
+                className={cn(searchOpen && "bg-gray-100")}
+                title="Buscar dentro de este PDF"
+                aria-label="Buscar dentro de este PDF"
+              >
                 <SearchIcon className="w-5 h-5" />
               </button>
               {zoom > 1 && (
@@ -2103,17 +2357,33 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                  {(loading || !readyToRender) && !error && (
                     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-2xl">
                       <div className="w-10 h-10 border-2 border-gray-200 border-t-gray-800 rounded-full animate-spin" />
-                      <p className="mt-4 text-xs font-bold text-gray-800">{loadProgress}% Cargando...</p>
+                      <p className="mt-4 text-xs font-bold text-gray-800">
+                        {loadProgress > 0 ? `${loadProgress}%` : 'Preparando'} el catálogo…
+                      </p>
+                      <div className="mt-3 h-1.5 w-44 overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className={cn(
+                            "h-full rounded-full bg-blue-600 transition-all duration-300",
+                            loadProgress === 0 && "w-1/3 animate-pulse"
+                          )}
+                          style={loadProgress > 0 ? { width: `${loadProgress}%` } : undefined}
+                        />
+                      </div>
+                      {loadAttempt > 1 ? (
+                        <p className="mt-3 text-[10px] font-semibold text-gray-500">
+                          Reintento automático {loadAttempt} de {PDF_DOCUMENT_ATTEMPTS}
+                        </p>
+                      ) : null}
                     </div>
                   )}
 
                   {error && (
                     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white p-8 text-center rounded-2xl border border-red-100">
-                      <FileWarning className="w-12 h-12 text-red-500 mb-4" />
+                      <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-red-200 border-t-red-500" />
                       <p className="text-sm font-medium text-gray-900">{error}</p>
-                      <button onClick={() => window.location.reload()} className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold">
-                        Reintentar
-                      </button>
+                      <p className="mt-4 text-xs font-semibold text-red-500">
+                        Recuperación automática del catálogo en curso…
+                      </p>
                     </div>
                   )}
 
@@ -2131,15 +2401,15 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                     {dimensions.isDoublePage ? (
                       // @ts-ignore
                       <HTMLFlipBook
-                        key={`flipbook-${pdf?.fingerprint || 'ready'}-spread`}
+                        key={`flipbook-${pdf?.fingerprint || 'ready'}-${dimensions.pageWidth}x${dimensions.pageHeight}`}
                         ref={bookRef}
                         width={dimensions.pageWidth}
                         height={dimensions.pageHeight}
-                        size="stretch"
-                        minWidth={1}
-                        maxWidth={dimensions.bookWidth}
-                        minHeight={1}
-                        maxHeight={dimensions.bookHeight}
+                        size="fixed"
+                        minWidth={dimensions.pageWidth}
+                        maxWidth={dimensions.pageWidth}
+                        minHeight={dimensions.pageHeight}
+                        maxHeight={dimensions.pageHeight}
                         usePortrait={false}
                         startPage={currentPage}
                         /* Let our own gesture layer fully control input: this
@@ -2150,11 +2420,17 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                         useMouseEvents={false}
                         clickEventForward={false}
                         onFlip={(e: any) => {
-                          const pageIndex = e.data;
+                          const pageIndex = Number(e.data);
+                          clearNavigationLock();
+                          if (!Number.isFinite(pageIndex)) return;
                           setCurrentPage(pageIndex);
+                          setRenderFocusPage(null);
                           setPageInput((pageIndex + 1).toString());
                           verifyPageWindow(pageIndex);
-                          if (zoom > 1.5) resetZoom();
+                          if (zoom > 1.01) resetZoom();
+                        }}
+                        onChangeState={(e: any) => {
+                          if (e.data !== 'flipping') clearNavigationLock();
                         }}
                         showCover={true}
                         drawShadow={true}
@@ -2162,7 +2438,11 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                         mobileScrollSupport={false}
                         flippingTime={700}
                         className="pdf-flipbook"
-                        style={{ margin: '0 auto' }}
+                        style={{
+                          margin: '0 auto',
+                          width: dimensions.bookWidth,
+                          height: dimensions.bookHeight,
+                        }}
                         autoSize={true}
                       >
                         {Array.from({ length: numPages }).map((_, i) => renderPdfPage(i + 1, `page-${i}`))}
@@ -2183,8 +2463,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                   className="pdf-side-nav pdf-side-nav--next"
                   onClick={() => goToNextPage()}
                   aria-label="Página siguiente"
-                  disabled={currentPage >= numPages - 1}
-                  style={{ opacity: currentPage >= numPages - 1 ? 0 : 1, pointerEvents: currentPage >= numPages - 1 ? 'none' : 'auto' }}
+                  disabled={isAtLastPage}
+                  style={{ opacity: isAtLastPage ? 0 : 1, pointerEvents: isAtLastPage ? 'none' : 'auto' }}
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>
@@ -2200,8 +2480,11 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
               type="range" 
               min="1" 
               max={numPages} 
-              value={currentPage + 1}
-              onChange={(e) => goToPage(parseInt(e.target.value))}
+              value={Math.min(Math.max(Number.parseInt(pageInput, 10) || 1, 1), numPages || 1)}
+              onChange={(e) => setPageInput(e.target.value)}
+              onPointerUp={handlePageInputBlur}
+              onKeyUp={handlePageInputBlur}
+              onBlur={handlePageInputBlur}
               className="pdf-progress-slider"
             />
             <button 
@@ -2256,6 +2539,11 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                               if (prev.has(p)) return prev;
                               const next = new Map(prev);
                               next.set(p, data);
+                              while (next.size > 24) {
+                                const oldest = next.keys().next().value as number | undefined;
+                                if (oldest === undefined) break;
+                                next.delete(oldest);
+                              }
                               return next;
                             });
                           }}

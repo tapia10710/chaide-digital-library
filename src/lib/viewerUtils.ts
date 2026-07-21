@@ -2,7 +2,7 @@
 // getPdfProxyUrl / formatFileSize / detectViewerSource) does NOT pull the heavy
 // pdfjs library into non-viewer bundles (home, search, cards).
 import type * as pdfjsLib from 'pdfjs-dist';
-import { isStaticSite, publicAssetUrl } from './runtimeConfig';
+import { isFirebaseSite, isStaticSite, publicAssetUrl } from './runtimeConfig';
 
 // Define source types
 export type ViewerSourceType = 'pdf-url' | 'embed-html' | 'embed-url' | 'unknown';
@@ -24,6 +24,17 @@ export function detectViewerSource(input: string | null | undefined): ViewerSour
   
   if (!trimmed) {
     return { type: 'unknown', value: '' };
+  }
+
+  if (trimmed.startsWith('firestore-pdf://')) {
+    return { type: 'pdf-url', value: trimmed, provider: 'direct' };
+  }
+
+  // Firestore PDFs are reconstructed as object URLs in ViewerPage. Treat the
+  // resulting browser Blob (and PDF data URLs used by recovery) as first-class
+  // PDF sources instead of falling through to the invalid-content screen.
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:application/pdf')) {
+    return { type: 'pdf-url', value: trimmed, provider: 'direct' };
   }
 
   // Check for HTML embed code
@@ -100,7 +111,8 @@ export function normalizeFlippingBookEmbed(html: string): string {
  */
 export function getPdfProxyUrl(url: string | null | undefined): string {
   if (!url || typeof url !== 'string') return '';
-  if (isStaticSite) return publicAssetUrl(url);
+  if (url.startsWith('firestore-pdf://')) return url;
+  if (isStaticSite || isFirebaseSite) return publicAssetUrl(url);
   if (url.startsWith('/storage/') && url.toLowerCase().split('?')[0].endsWith('.pdf')) {
     return `/api/local-pdf?path=${encodeURIComponent(url.replace('/storage/', ''))}`;
   }

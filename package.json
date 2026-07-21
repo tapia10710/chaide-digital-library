@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build:firebase": "node scripts/prepare-static-site.mjs && vite build --mode firebase",
     "build:pages": "node scripts/prepare-static-site.mjs && vite build --outDir dist-pages",
+    "verify:pdfs": "node scripts/verify-pdf-library.mjs",
+    "verify:admin-upload": "node scripts/verify-admin-upload-e2e.mjs",
+    "backfill:drive": "node scripts/backfill-drive-backups.mjs",
+    "backup:firestore": "node scripts/export-firestore-backup.mjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
@@ -60,5 +65,8 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

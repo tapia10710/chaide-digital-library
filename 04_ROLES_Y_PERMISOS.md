@@ -106,3 +106,14 @@ El valor de la cookie coincide actualmente con `ADMIN_TOKEN`. Debe ser largo, al
 5. Registrar auditoría de altas, cambios, reemplazos y eliminaciones.
 6. Usar HTTPS en toda instancia accesible fuera de una red interna controlada.
 7. Separar permisos de contenido, publicación e infraestructura.
+
+## Autorización vigente en Firebase
+
+- Visitante: puede leer las colecciones públicas y abrir PDF.
+- Administrador: la cuenta técnica confirmada puede gestionar contenido.
+- Usuario autenticado no autorizado: conserva únicamente lecturas públicas.
+- Acceso anónimo: no puede escribir.
+
+El usuario visible es `Chaide2026`. La contraseña se administra exclusivamente en Firebase Authentication y no se documenta ni se guarda en Git. Las reglas comprueban nuevamente `email_verified` y el correo técnico interno. Apps Script aplica la misma comprobación antes de escribir en Drive.
+
+La configuración web y su `apiKey` son identificadores públicos; no conceden permisos administrativos. `.env`, tokens OAuth, contraseñas y credenciales permanecen fuera de Git.

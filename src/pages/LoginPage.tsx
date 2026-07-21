@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
+import { isFirebaseSite } from '../lib/runtimeConfig';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -21,6 +22,42 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      if (isFirebaseSite) {
+        const [{ signInWithEmailAndPassword, signOut }, { auth }, {
+          FIREBASE_ADMIN_EMAIL,
+          FIREBASE_ADMIN_USERNAME,
+          isFirebaseAdminEmail,
+        }] =
+          await Promise.all([
+            import('firebase/auth'),
+            import('../lib/firebase'),
+            import('../lib/firebaseCatalog'),
+          ]);
+        if (username.trim().toLowerCase() !== FIREBASE_ADMIN_USERNAME.toLowerCase()) {
+          throw new Error('Usuario o contraseña incorrectos.');
+        }
+        const credential = await signInWithEmailAndPassword(
+          auth,
+          FIREBASE_ADMIN_EMAIL,
+          password,
+        );
+        const firebaseUser = credential.user;
+        if (!firebaseUser.emailVerified || !isFirebaseAdminEmail(firebaseUser.email)) {
+          await signOut(auth);
+          throw new Error('Esta cuenta no está autorizada para administrar la biblioteca.');
+        }
+        login({
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          name: firebaseUser.displayName || 'CHAIDE 2026',
+          role: 'admin',
+          avatarUrl: firebaseUser.photoURL || undefined,
+        });
+        setSuccess(true);
+        window.setTimeout(() => navigate('/admin'), 500);
+        return;
+      }
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

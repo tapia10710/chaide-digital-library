@@ -3,12 +3,16 @@
     {
       "id": "upload-1779203627877-83sbom",
       "title": "CATÁLOGO COBIJAS SUNSET",
-      "description": "",
+      "description": "Catálogo digital de COBIJAS SUNSET de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 31,
       "coverUrl": "/storage/covers/upload-1779203627877-83sbom.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203627877-83sbom.pdf",
-      "tags": [],
+      "tags": [
+        "cobijas",
+        "sunset",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -289,17 +293,23 @@
           "score": 10
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203627810-ik18yr",
       "title": "DUVET ZAFIRO LLANOS",
-      "description": "",
+      "description": "Catálogo digital de DUVET ZAFIRO LLANOS de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 8,
       "coverUrl": "/storage/covers/upload-1779203627810-ik18yr.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203627810-ik18yr.pdf",
-      "tags": [],
+      "tags": [
+        "duvet",
+        "zafiro",
+        "llanos",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -364,17 +374,21 @@
           "score": 9
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203627513-3xt928",
       "title": "CATALOGO TÉCNICO 2025",
-      "description": "",
+      "description": "Catálogo digital de 2025 de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 229,
       "coverUrl": "/storage/covers/upload-1779203627513-3xt928.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203627513-3xt928.pdf",
-      "tags": [],
+      "tags": [
+        "tecnico",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -744,17 +758,21 @@
           "score": 9
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203277626-qye3o",
       "title": "CATÁLOGO DE MUEBLES",
-      "description": "",
+      "description": "Catálogo digital de MUEBLES de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 42,
       "coverUrl": "/storage/covers/upload-1779203277626-qye3o.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203277626-qye3o.pdf",
-      "tags": [],
+      "tags": [
+        "muebles",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -1387,17 +1405,22 @@
           "score": 11
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203277526-u7fp7",
       "title": "CATALOGO PET DREAMS 2025",
-      "description": "",
+      "description": "Catálogo digital de PET DREAMS 2025 de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 7,
       "coverUrl": "/storage/covers/upload-1779203277526-u7fp7.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203277526-u7fp7.pdf",
-      "tags": [],
+      "tags": [
+        "pet",
+        "dreams",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -1415,17 +1438,21 @@
           "ocrConfidence": 92
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203277423-5e8xrf",
       "title": "Catálogo Alternativa",
-      "description": "",
+      "description": "Catálogo digital de Alternativa de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 4,
       "coverUrl": "/storage/covers/upload-1779203277423-5e8xrf.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203277423-5e8xrf.pdf",
-      "tags": [],
+      "tags": [
+        "alternativa",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -1458,17 +1485,22 @@
           "score": 15
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203277321-o4lyx",
       "title": "CATALOGO SABANAS FIORE",
-      "description": "",
+      "description": "Catálogo digital de SABANAS FIORE de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 7,
       "coverUrl": "/storage/covers/upload-1779203277321-o4lyx.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203277321-o4lyx.pdf",
-      "tags": [],
+      "tags": [
+        "sabanas",
+        "fiore",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -1533,17 +1565,22 @@
           "score": 9
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203277238-oj9wi1i",
       "title": "CATALOGO LÍNEA HOTELERA 2025",
-      "description": "",
+      "description": "Catálogo digital de LÍNEA HOTELERA 2025 de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 10,
       "coverUrl": "/storage/covers/upload-1779203277238-oj9wi1i.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203277238-oj9wi1i.pdf",
-      "tags": [],
+      "tags": [
+        "linea",
+        "hotelera",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -1597,17 +1634,22 @@
           "ocrConfidence": 88
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203277157-mj8jqh",
       "title": "CATALOGO DE ESPUMAS PREMIUM 2025",
-      "description": "",
+      "description": "Catálogo digital de ESPUMAS PREMIUM 2025 de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 20,
       "coverUrl": "/storage/covers/upload-1779203277157-mj8jqh.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203277157-mj8jqh.pdf",
-      "tags": [],
+      "tags": [
+        "espumas",
+        "premium",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -1816,17 +1858,21 @@
           "score": 14
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203276988-vdnku6b",
       "title": "CATÁLOGO MASCOTAS",
-      "description": "",
+      "description": "Catálogo digital de MASCOTAS de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 6,
       "coverUrl": "/storage/covers/upload-1779203276988-vdnku6b.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203276988-vdnku6b.pdf",
-      "tags": [],
+      "tags": [
+        "mascotas",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -1923,17 +1969,21 @@
           "score": 12
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203276776-7pgk07",
       "title": "CATALOGO DE ESPUMAS 2024",
-      "description": "",
+      "description": "Catálogo digital de ESPUMAS 2024 de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 30,
       "coverUrl": "/storage/covers/upload-1779203276776-7pgk07.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203276776-7pgk07.pdf",
-      "tags": [],
+      "tags": [
+        "espumas",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -2478,17 +2528,21 @@
           "score": 11
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203276568-pdow4g",
       "title": "CATALOGO BABY CHAIDE 2025",
-      "description": "",
+      "description": "Catálogo digital de BABY CHAIDE 2025 de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 12,
       "coverUrl": "/storage/covers/upload-1779203276568-pdow4g.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203276568-pdow4g.pdf",
-      "tags": [],
+      "tags": [
+        "baby",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -2561,17 +2615,22 @@
           "score": 9
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203276308-mj02se",
       "title": "CATALOGO SÁBANAS SUNSET",
-      "description": "",
+      "description": "Catálogo digital de SÁBANAS SUNSET de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 15,
       "coverUrl": "/storage/covers/upload-1779203276308-mj02se.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203276308-mj02se.pdf",
-      "tags": [],
+      "tags": [
+        "sabanas",
+        "sunset",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -2676,17 +2735,22 @@
           "score": 7
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203276058-bixdge",
       "title": "CATALOGO SÁBANAS ZAFIRO",
-      "description": "",
+      "description": "Catálogo digital de SÁBANAS ZAFIRO de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 25,
       "coverUrl": "/storage/covers/upload-1779203276058-bixdge.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203276058-bixdge.pdf",
-      "tags": [],
+      "tags": [
+        "sabanas",
+        "zafiro",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -2767,17 +2831,21 @@
           "score": 11
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203275693-b7y5p",
       "title": "CATALOGO TELAS 2026",
-      "description": "",
+      "description": "Catálogo digital de TELAS 2026 de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 21,
       "coverUrl": "/storage/covers/upload-1779203275693-b7y5p.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203275693-b7y5p.pdf",
-      "tags": [],
+      "tags": [
+        "telas",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -2858,17 +2926,22 @@
           "score": 16
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203275276-owadsp",
       "title": "CATALOGO ALMOHADAS Y COMPLEMENTOS 2025",
-      "description": "",
+      "description": "Catálogo digital de ALMOHADAS Y COMPLEMENTOS 2025 de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 58,
       "coverUrl": "/storage/covers/upload-1779203275276-owadsp.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203275276-owadsp.pdf",
-      "tags": [],
+      "tags": [
+        "almohadas",
+        "complementos",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -2940,17 +3013,21 @@
           "ocrConfidence": 87
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203274709-vzd1wc",
       "title": "Catálogo Innovación 2023 - 2024",
-      "description": "",
+      "description": "Catálogo digital de Catálogo Innovación 2023 - 2024 de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 31,
       "coverUrl": "/storage/covers/upload-1779203274709-vzd1wc.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203274709-vzd1wc.pdf",
-      "tags": [],
+      "tags": [
+        "innovacion",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -3631,17 +3708,22 @@
           "score": 11
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203274211-vkhzl",
       "title": "CATALOGO COBERTORES SUNSET",
-      "description": "",
+      "description": "Catálogo digital de COBERTORES SUNSET de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 9,
       "coverUrl": "/storage/covers/upload-1779203274211-vkhzl.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203274211-vkhzl.pdf",
-      "tags": [],
+      "tags": [
+        "cobertores",
+        "sunset",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -3649,17 +3731,21 @@
       "isActive": true,
       "updatedAt": "2026-05-19T15:08:23.371Z",
       "indexItems": [],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203273795-njefbg",
       "title": "CATALOGO DE COLCHONES",
-      "description": "",
+      "description": "Catálogo digital de COLCHONES de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 83,
       "coverUrl": "/storage/covers/upload-1779203273795-njefbg.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203273795-njefbg.pdf",
-      "tags": [],
+      "tags": [
+        "colchones",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -3860,17 +3946,22 @@
           "score": 8
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "upload-1779203272815-cyn7t",
       "title": "CATALOGO EDREDONES ZAFIRO",
-      "description": "",
+      "description": "Catálogo digital de EDREDONES ZAFIRO de Chaide. Consulta productos, características, materiales, medidas y opciones disponibles.",
       "category": "Descanso",
       "pageCount": 10,
       "coverUrl": "/storage/covers/upload-1779203272815-cyn7t.jpg",
       "fileUrl": "/storage/pdfs/upload-1779203272815-cyn7t.pdf",
-      "tags": [],
+      "tags": [
+        "edredones",
+        "zafiro",
+        "descanso"
+      ],
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
@@ -3911,7 +4002,8 @@
           "score": 13
         }
       ],
-      "linearized": true
+      "linearized": true,
+      "metadataVersion": "validated-v1"
     },
     {
       "id": "doc-1",

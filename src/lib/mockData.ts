@@ -1,3 +1,14 @@
+export interface DocumentIndexItem {
+  id: string;
+  title: string;
+  pageNumber: number;
+  level: number;
+  source: 'outline' | 'auto' | 'ocr';
+  score?: number;
+  ocrConfidence?: number;
+  children?: DocumentIndexItem[];
+}
+
 export interface DocumentDef {
   id: string;
   title: string;
@@ -12,11 +23,17 @@ export interface DocumentDef {
   sourceType?: 'upload' | 'url' | 'embed';
   visibility?: string;
   externalUrl?: string;
+  driveFileId?: string;
+  coverFileId?: string;
+  driveBackupStatus?: 'ready' | 'error';
+  storageVersion?: string;
   priority?: number;
   isActive?: boolean;
   order?: number;
   fileSize?: number;
-  indexItems?: any[]; // Simplified for now
+  indexItems?: DocumentIndexItem[];
+  searchIndexVersion?: string;
+  searchIndexStatus?: 'ready' | 'no-text' | 'error';
 }
 
 export const mockDocuments: DocumentDef[] = [

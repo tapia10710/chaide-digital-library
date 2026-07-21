@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FileText, Search, Edit, Trash2, RefreshCw } from 'lucide-react';
+import { FileText, Search, Edit, Trash2, RefreshCw, CloudDownload } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { DocumentDef } from '../lib/mockData';
@@ -8,7 +8,10 @@ import AdminLinkImport from '../components/admin/AdminLinkImport';
 import AdminEditModal from '../components/admin/AdminEditModal';
 import CategoryManager from '../components/admin/CategoryManager';
 import PromotionalBannerManager from '../components/admin/PromotionalBannerManager';
+import FirebaseUploadPanel from '../components/admin/FirebaseUploadPanel';
+import { isFirebaseSite } from '../lib/runtimeConfig';
 import { motion, AnimatePresence } from 'motion/react';
+import { repairFirebaseDocumentFromDrive } from '../lib/firebaseCatalogPublication';
 
 function DeleteButton({ onDelete, docTitle }: { onDelete: () => void, docTitle: string }) {
   const [confirming, setConfirming] = useState(false);
@@ -73,12 +76,32 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [repairingId, setRepairingId] = useState('');
+  const [repairMessage, setRepairMessage] = useState('');
   const didInitialLoadRef = useRef(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await Promise.all([fetchDocuments(true), fetchCategories(), fetchPromotionalBanner()]);
     setIsRefreshing(false);
+  };
+
+  const handleRepair = async (document: DocumentDef) => {
+    setRepairingId(document.id);
+    setRepairMessage(`Preparando reparación de ${document.title}…`);
+    try {
+      await repairFirebaseDocumentFromDrive(document, (stage, progress) => {
+        setRepairMessage(`${stage}${progress === undefined ? '' : ` · ${progress}%`}`);
+      });
+      await fetchDocuments(true);
+      setRepairMessage(`${document.title}: PDF e índice restaurados desde Drive.`);
+    } catch (error) {
+      setRepairMessage(
+        error instanceof Error ? error.message : 'No se pudo reparar el catálogo.',
+      );
+    } finally {
+      setRepairingId('');
+    }
   };
 
   useEffect(() => {
@@ -126,8 +149,15 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      <AdminUploadQueue initialReplaceDocId={replaceDocId} />
-      <AdminLinkImport />
+      {isFirebaseSite
+        ? <FirebaseUploadPanel initialReplaceDocId={replaceDocId} />
+        : <AdminUploadQueue initialReplaceDocId={replaceDocId} />}
+      {repairMessage && (
+        <div className="mt-4 rounded-xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+          {repairMessage}
+        </div>
+      )}
+      {!isFirebaseSite && <AdminLinkImport />}
       <PromotionalBannerManager />
       <CategoryManager />
 
@@ -192,6 +222,16 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                       {isFirebaseSite && doc.driveFileId && (
+                         <button
+                           onClick={() => handleRepair(doc)}
+                           disabled={Boolean(repairingId)}
+                           title={`Validar y reparar ${doc.title} desde Drive`}
+                           className="p-1.5 text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors disabled:opacity-40"
+                         >
+                           <CloudDownload className={`w-4 h-4 ${repairingId === doc.id ? 'animate-pulse' : ''}`} />
+                         </button>
+                       )}
                        <button 
                          onClick={() => {
                            setReplaceDocId(undefined);

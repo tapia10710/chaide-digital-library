@@ -9,6 +9,7 @@ import {
   getCategoryIconComponent,
 } from '../../lib/categoryIconRegistry';
 import { catalogCategories } from '../../lib/catalogCategories';
+import { isFirebaseSite } from '../../lib/runtimeConfig';
 
 const BASE_CATEGORY_SLUGS = new Set<string>(catalogCategories.map((category) => category.slug));
 
@@ -66,6 +67,20 @@ export default function CategoryManager() {
     if (!file) return;
 
     setIsUploading(true);
+    if (isFirebaseSite) {
+      try {
+        const { uploadFileToDrive } = await import('../../lib/firebaseCatalog');
+        const uploaded = await uploadFileToDrive(file, 'category-icons');
+        setImageUrl(uploaded.thumbnailUrl || uploaded.driveUrl);
+        setIconKey('');
+      } catch (err) {
+        console.error(err);
+        alert(err instanceof Error ? err.message : 'Error al subir el icono');
+      } finally {
+        setIsUploading(false);
+      }
+      return;
+    }
     const formData = new FormData();
     formData.append('icon', file);
 

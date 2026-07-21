@@ -10,15 +10,17 @@ if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
 
 /**
  * Process-wide cache of parsed PDF documents AND rendered page bitmaps, keyed by
- * URL. It survives React route changes (the viewer unmounting), so a catalog the
- * user already opened stays loaded: re-opening it is instant — no re-download,
- * no re-parse, no re-render. Once the active document is loaded we also preload
- * the OTHER catalogs in the background without evicting the ones already loaded.
+ * URL. It keeps only the current and most recently used catalog so reopening
+ * either one is quick without allowing old documents to consume memory.
  *
  * Memory is intentionally favoured for speed; an LRU cap keeps it bounded.
  */
 
-const MAX_DOCS = 8;
+const MAX_DOCS = 2;
+// Keep a small hot set. Large, image-heavy catalogues can otherwise retain
+// hundreds of MB in GPU-backed ImageBitmaps and Chrome may silently blank a
+// canvas when it runs out of graphics memory.
+const MAX_BITMAPS_PER_DOC = 6;
 
 type DocEntry = {
   url: string;
@@ -35,9 +37,14 @@ type ProgressFn = (p: { loaded: number; total: number }) => void;
 function buildTask(url: string) {
   return pdfjsLib.getDocument({
     url,
-    disableAutoFetch: true,
+    // Keep the HTTP stream enabled. Some large catalogues contain many
+    // cross-reference sections; requesting those in tiny isolated ranges makes
+    // pdf.js remain at 0 pages for too long. The document bytes stream once,
+    // while page parsing and canvas rendering remain strictly windowed around
+    // the page selected by the reader.
+    disableAutoFetch: false,
     disableStream: false,
-    rangeChunkSize: 262144,
+    rangeChunkSize: 1048576,
     cMapUrl: `${window.location.origin}${import.meta.env.BASE_URL}cmaps/`,
     cMapPacked: true,
   });
@@ -83,43 +90,50 @@ export function loadDocument(url: string, onProgress?: ProgressFn): Promise<pdfj
   if (onProgress) {
     task.onProgress = onProgress as any;
   }
-  const promise = task.promise.then((p) => {
-    const ent = documents.get(url);
-    if (ent) ent.proxy = p;
-    return p;
-  });
+  const promise = task.promise
+    .then((p) => {
+      const ent = documents.get(url);
+      if (ent) ent.proxy = p;
+      return p;
+    })
+    .catch((error) => {
+      const ent = documents.get(url);
+      if (ent?.promise === promise) documents.delete(url);
+      try { task.destroy(); } catch { /* noop */ }
+      throw error;
+    });
 
   documents.set(url, { url, promise, lastUsed: Date.now() });
   evict();
   return promise;
 }
 
-let preloading = false;
-/**
- * After the active catalog is loaded, parse the OTHER catalogs in the background
- * so opening any of them is instant too. Already-cached docs are skipped, and
- * nothing already loaded is evicted (unless the LRU cap is exceeded).
- */
-export async function preloadDocuments(urls: string[]) {
-  if (preloading) return;
-  preloading = true;
-  try {
-    for (const url of urls) {
-      if (!url || documents.has(url)) continue;
-      try {
-        await loadDocument(url);
-      } catch { /* ignore individual failures */ }
-      // Small yield between docs so the active viewer keeps priority.
-      await new Promise((r) => setTimeout(r, 60));
-    }
-  } finally {
-    preloading = false;
-  }
+export function invalidateDocument(url: string) {
+  const entry = documents.get(url);
+  if (!entry) return;
+  documents.delete(url);
+  const renderedPages = bitmaps.get(url);
+  renderedPages?.forEach((value) => {
+    try { value.bitmap.close?.(); } catch { /* noop */ }
+  });
+  bitmaps.delete(url);
+  void entry.promise
+    .then((proxy) => {
+      try { proxy.destroy(); } catch { /* noop */ }
+    })
+    .catch(() => undefined);
 }
 
 /** Rendered-bitmap cache so re-opening a viewed page paints with zero delay. */
 export function getRenderedBitmap(url: string, page: number) {
-  return bitmaps.get(url)?.get(page) || null;
+  const documentBitmaps = bitmaps.get(url);
+  const cached = documentBitmaps?.get(page) || null;
+  if (cached && documentBitmaps) {
+    // Refresh insertion order so the least recently viewed bitmap is evicted.
+    documentBitmaps.delete(page);
+    documentBitmaps.set(page, cached);
+  }
+  return cached;
 }
 
 export function setRenderedBitmap(url: string, page: number, bitmap: ImageBitmap, w: number, h: number) {
@@ -130,5 +144,14 @@ export function setRenderedBitmap(url: string, page: number, bitmap: ImageBitmap
   }
   const old = m.get(page);
   if (old) { try { old.bitmap.close?.(); } catch { /* noop */ } }
+  m.delete(page);
   m.set(page, { bitmap, w, h });
+
+  while (m.size > MAX_BITMAPS_PER_DOC) {
+    const oldestPage = m.keys().next().value as number | undefined;
+    if (oldestPage === undefined) break;
+    const oldest = m.get(oldestPage);
+    m.delete(oldestPage);
+    try { oldest?.bitmap.close?.(); } catch { /* noop */ }
+  }
 }

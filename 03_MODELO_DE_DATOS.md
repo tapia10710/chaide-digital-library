@@ -169,3 +169,31 @@ del respaldo del volumen, aunque puedan volver a descargarse.
 - El respaldo debe capturar `db.json`, `uploads/` y `search-index/` como una sola unidad consistente.
 - Antes de añadir o renombrar campos se debe mantener compatibilidad con registros existentes o crear una migración al inicio.
 - No se deben editar simultáneamente los mismos datos desde varias réplicas del servidor.
+
+## Modelo vigente en Cloud Firestore
+
+| Ruta | Uso |
+|---|---|
+| `documents/{id}` | Metadatos del catálogo |
+| `categories/{id}` | Categorías, orden, icono, imagen y estado |
+| `settings/promotional-banner` | Banner de escritorio y móvil |
+| `pdfFiles/{id}` | Manifiesto del PDF nuevo |
+| `pdfFiles/{id}/chunks/{version-index}` | Fragmentos binarios de hasta 700 KiB |
+| `admins/{uid}` | Perfil administrativo reservado |
+
+Los 21 PDF históricos continúan en Firebase Hosting bajo `/storage/pdfs/`. Los PDF nuevos se fragmentan para respetar el límite de 1 MiB por documento. El manifiesto cambia de versión únicamente después de completar la carga, por lo que una sustitución fallida no invalida el PDF anterior.
+
+Para publicaciones nuevas, `documents/{id}` conserva además:
+
+- `driveFileId`: respaldo PDF administrado en Drive.
+- `coverFileId`: portada administrada en Drive, necesaria para reemplazo y eliminación segura.
+- `indexItems`: índice lateral del visor generado durante la validación.
+- `storageVersion` y `searchIndexVersion`: versiones completas que deben consumirse juntas.
+## Índice de búsqueda de PDF en Firebase
+
+- `pdfSearchIndexes/{documentId}` guarda `version`, `pageCount`, `hasText` y `updatedAt`.
+- `pdfSearchIndexes/{documentId}/pages/{version-pageNumber}` guarda texto limpio, número de página y versión.
+- `documents/{documentId}.searchIndexVersion` identifica la versión que deben consumir las búsquedas.
+- `documents/{documentId}.searchIndexStatus` indica `ready`, `no-text` o `error`.
+
+Una versión sólo es válida cuando contiene exactamente el mismo número de páginas que `documents.pageCount`.

@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { isExternalDestinationUrl, normalizeDestinationUrl } from '../../lib/linkUtils';
 
 interface PromotionalBannerProps {
   className?: string;
-}
-
-function isExternalUrl(url: string) {
-  return /^https?:\/\//i.test(url);
 }
 
 const MOBILE_QUERY = '(max-width: 767px)';
@@ -51,7 +48,8 @@ export default function PromotionalBanner({ className = '' }: PromotionalBannerP
   const src = isMobile ? mobileImage : webImage;
   if (!src) return null;
 
-  const targetUrl = banner.targetUrl?.trim();
+  const targetUrl = normalizeDestinationUrl(banner.targetUrl);
+  const isExternalTarget = isExternalDestinationUrl(targetUrl);
   const alt = banner.altText || 'Banner promocional';
   const classes = `promotional-banner-frame promotional-banner-frame--${variant}`;
   const img = <img src={src} alt={alt} loading="lazy" decoding="async" />;
@@ -62,8 +60,8 @@ export default function PromotionalBanner({ className = '' }: PromotionalBannerP
         <a
           className={classes}
           href={targetUrl}
-          target={isExternalUrl(targetUrl) ? '_blank' : undefined}
-          rel={isExternalUrl(targetUrl) ? 'noopener noreferrer' : undefined}
+          target={isExternalTarget ? '_blank' : undefined}
+          rel={isExternalTarget ? 'noopener noreferrer' : undefined}
           aria-label={alt}
         >
           {img}

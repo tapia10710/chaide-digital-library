@@ -2,7 +2,7 @@ import React from 'react';
 import { Menu, Search, User as UserIcon, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
-import { isStaticSite } from '../../lib/runtimeConfig';
+import { isFirebaseSite, isStaticSite } from '../../lib/runtimeConfig';
 
 export default function Header() {
   const { toggleSidebar, searchQuery, setSearchQuery, role, user, logout } = useStore();
@@ -10,10 +10,18 @@ export default function Header() {
   const location = useLocation();
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'same-origin',
-    }).catch(() => undefined);
+    if (isFirebaseSite) {
+      const [{ signOut }, { auth }] = await Promise.all([
+        import('firebase/auth'),
+        import('../../lib/firebase'),
+      ]);
+      await signOut(auth).catch(() => undefined);
+    } else {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+      }).catch(() => undefined);
+    }
     logout();
     navigate('/login');
   };
@@ -52,7 +60,7 @@ export default function Header() {
         </nav>
 
         <div className="library-actions">
-          {!isSearchPage && !isViewerPage && (
+          {!isSearchPage && (
             <form onSubmit={handleSearch} className="catalog-search desktop-search">
               <input 
                 type="search" 
@@ -64,6 +72,20 @@ export default function Header() {
                 <Search className="catalog-search-icon" size={18} />
               </button>
             </form>
+          )}
+
+          {isViewerPage && (
+            <button
+              type="button"
+              onClick={() => navigate(searchQuery.trim()
+                ? `/buscar?q=${encodeURIComponent(searchQuery.trim())}`
+                : '/buscar')}
+              className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white"
+              aria-label="Buscar en toda la biblioteca"
+              title="Buscar en toda la biblioteca"
+            >
+              <Search size={19} />
+            </button>
           )}
 
           {role === 'admin' && (

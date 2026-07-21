@@ -1,5 +1,19 @@
 # Chaide Biblioteca Digital
 
+## Producción Firebase
+
+La biblioteca está publicada en **https://biblioteca-catalogos-chaide.web.app**.
+
+El despliegue principal utiliza Firebase Hosting, Cloud Firestore, Firebase Authentication y Google Drive como respaldo. Los 21 PDF históricos y todos los PDF nuevos se abren con el visor PDF.js integrado.
+
+```powershell
+npm run lint
+npm run build:firebase
+npx firebase-tools deploy --only firestore:rules,firestore:indexes,hosting --project biblioteca-catalogos-chaide
+```
+
+La modalidad Docker se mantiene como alternativa de autohospedaje y reversión.
+
 Biblioteca web de catalogos construida con React, Vite, TypeScript y Express.
 El proyecto puede publicarse en cualquier repositorio de GitHub o instalarse
 con Docker en un servidor.

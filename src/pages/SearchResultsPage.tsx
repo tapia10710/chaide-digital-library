@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, AlertCircle, Search, X, Filter, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, Search, X, ArrowRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { getPdfProxyUrl, detectViewerSource } from '../lib/viewerUtils';
 import { getCachedPdfData, setCachedPdfData } from '../lib/backgroundIndexer';
-import { isStaticSite, staticDataUrl } from '../lib/runtimeConfig';
+import { isFirebaseSite, isStaticSite } from '../lib/runtimeConfig';
+import { getDocumentSearchText } from '../lib/catalogCategories';
+import { loadPersistedCatalogSearchIndex } from '../lib/catalogSearchIndex';
 
 // pdfjs is heavy and only needed for the rare client-side fallback indexing
 // path (the main search runs server-side via /api/search). Load it lazily so
@@ -54,6 +56,8 @@ interface GlobalSearchResult {
 }
 
 const indexCache: Record<string, CatalogSearchIndex> = {};
+const getIndexCacheKey = (doc: any) =>
+  `${doc.id}:${doc.searchIndexVersion || doc.fileUrl || 'legacy'}`;
 
 // We can put search highlighter here
 function HighlightedText({ text, highlight }: { text: string; highlight: string }) {
@@ -124,7 +128,8 @@ export default function SearchResultsPage() {
   };
 
   const indexPdf = async (doc: any): Promise<CatalogSearchIndex | null> => {
-    if (indexCache[doc.id]) return indexCache[doc.id];
+    const cacheKey = getIndexCacheKey(doc);
+    if (indexCache[cacheKey]) return indexCache[cacheKey];
 
     // 1. Check IndexedDB Cache first
     try {
@@ -134,7 +139,9 @@ export default function SearchResultsPage() {
             console.log(`[Search] Retrying ${doc.title} after previous index failure: ${cached.error}`);
         }
 
-        if (cached.fullText && cached.fullText.length > 0) {
+        const cacheMatchesVersion =
+          !doc.searchIndexVersion || cached.indexVersion === doc.searchIndexVersion;
+        if (cacheMatchesVersion && cached.fullText && cached.fullText.length > 0) {
           console.log(`[Search] Found cached index for ${doc.title}`);
           const index: CatalogSearchIndex = {
             catalogId: doc.id,
@@ -148,7 +155,7 @@ export default function SearchResultsPage() {
               normalizedText: normalizeText(it.text)
             }))
           };
-          indexCache[doc.id] = index;
+          indexCache[cacheKey] = index;
           return index;
         }
       }
@@ -156,12 +163,10 @@ export default function SearchResultsPage() {
       console.warn('Cache read error:', cacheErr);
     }
 
-    if (isStaticSite) {
+    if (isStaticSite || isFirebaseSite) {
       try {
-        const response = await fetch(staticDataUrl(`search-index/${encodeURIComponent(doc.id)}.json`));
-        if (!response.ok) return null;
-        const persisted = await response.json();
-        const pages = Array.isArray(persisted.pages) ? persisted.pages : [];
+        const pages = await loadPersistedCatalogSearchIndex(doc);
+        if (pages.length === 0) return null;
         const index: CatalogSearchIndex = {
           catalogId: doc.id,
           title: doc.title,
@@ -175,7 +180,13 @@ export default function SearchResultsPage() {
             normalizedText: normalizeText(page.text),
           })),
         };
-        indexCache[doc.id] = index;
+        await setCachedPdfData(doc.id, {
+          items: doc.indexItems || [],
+          fullText: pages.map((page) => ({ page: page.pageNumber, text: page.text })),
+          lastIndexed: new Date().toISOString(),
+          indexVersion: doc.searchIndexVersion,
+        });
+        indexCache[cacheKey] = index;
         return index;
       } catch {
         return null;
@@ -232,7 +243,7 @@ export default function SearchResultsPage() {
         lastIndexed: new Date().toISOString()
       });
 
-      indexCache[doc.id] = index;
+      indexCache[cacheKey] = index;
       return index;
     } catch (e: any) {
       console.warn(`Error indexing PDF for ${doc.title}:`, e.message);
@@ -251,7 +262,7 @@ export default function SearchResultsPage() {
     setIsSearching(true);
     const searchResults: GlobalSearchResult[] = [];
 
-    if (!isStaticSite) {
+    if (!isStaticSite && !isFirebaseSite) {
       try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
           headers: {
@@ -278,6 +289,7 @@ export default function SearchResultsPage() {
     documents.forEach(doc => {
       const normTitle = normalizeText(doc.title);
       const normDesc = normalizeText(doc.description || '');
+      const normMetadata = getDocumentSearchText(doc);
 
       if (normTitle.includes(normalizedQuery)) {
         searchResults.push({
@@ -303,6 +315,18 @@ export default function SearchResultsPage() {
           matchText: query,
           source: 'catalog-description'
         });
+      } else if (normMetadata.includes(normalizedQuery)) {
+        searchResults.push({
+          catalogId: doc.id,
+          title: doc.title,
+          description: doc.description,
+          coverUrl: doc.coverUrl,
+          totalPages: doc.pageCount,
+          pageNumber: 1,
+          snippet: [doc.category, ...(doc.tags || [])].filter(Boolean).join(' · '),
+          matchText: query,
+          source: 'catalog-description'
+        });
       }
     });
 
@@ -312,9 +336,12 @@ export default function SearchResultsPage() {
 
     // 2. Initial Parallel Cache Check
     const cachedIndexes = await Promise.all(pdfDocs.map(async doc => {
-      if (indexCache[doc.id]) return { doc, index: indexCache[doc.id] };
+      const cacheKey = getIndexCacheKey(doc);
+      if (indexCache[cacheKey]) return { doc, index: indexCache[cacheKey] };
       const cached = await getCachedPdfData(doc.id);
-      if (cached && cached.fullText && cached.fullText.length > 0) {
+      const cacheMatchesVersion =
+        !doc.searchIndexVersion || cached?.indexVersion === doc.searchIndexVersion;
+      if (cached && cacheMatchesVersion && cached.fullText && cached.fullText.length > 0) {
         const index: CatalogSearchIndex = {
           catalogId: doc.id,
           title: doc.title,
@@ -327,7 +354,7 @@ export default function SearchResultsPage() {
             normalizedText: normalizeText(it.text)
           }))
         };
-        indexCache[doc.id] = index;
+        indexCache[cacheKey] = index;
         return { doc, index };
       }
       return { doc, index: null };
@@ -365,11 +392,14 @@ export default function SearchResultsPage() {
     const missingDocs = cachedIndexes.filter(it => !it.index).map(it => it.doc);
     
     if (missingDocs.length > 0) {
-      for (let i = 0; i < missingDocs.length; i++) {
-        const doc = missingDocs[i];
-        setIndexingProgress({ current: totalPdf - missingDocs.length + i + 1, total: totalPdf });
-        
+      let completedIndexes = totalPdf - missingDocs.length;
+      // Limit concurrent index downloads. A large library should not open
+      // hundreds of Firestore/static requests at once on a phone.
+      for (let start = 0; start < missingDocs.length; start += 3) {
+        await Promise.all(missingDocs.slice(start, start + 3).map(async (doc) => {
         const index = await indexPdf(doc);
+        completedIndexes += 1;
+        setIndexingProgress({ current: completedIndexes, total: totalPdf });
         if (index) {
           let foundNewMatches = false;
           for (const page of index.pages) {
@@ -389,7 +419,7 @@ export default function SearchResultsPage() {
               foundNewMatches = true;
             }
           }
-          
+
           if (foundNewMatches) {
             setResults([...searchResults].sort((a, b) => {
               if (a.source !== 'pdf-content' && b.source === 'pdf-content') return -1;
@@ -398,6 +428,7 @@ export default function SearchResultsPage() {
             }));
           }
         }
+        }));
       }
     }
 
@@ -427,6 +458,8 @@ export default function SearchResultsPage() {
   const handleClear = () => {
     setInputValue('');
     setSearchQuery('');
+    setSearchParams({});
+    setResults([]);
   };
 
   return (
@@ -444,7 +477,7 @@ export default function SearchResultsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Páginas encontradas</h1>
           </div>
           <div className="text-gray-500 ml-9 flex gap-2 text-sm">
-            <span>{results.length} resultados en el documento</span>
+            <span>{results.length} resultados en la biblioteca</span>
             <span>•</span>
             <span>Total de catálogos buscados</span>
           </div>
@@ -474,10 +507,6 @@ export default function SearchResultsPage() {
               </button>
             )}
           </form>
-          <button className="h-14 px-6 flex items-center gap-2 border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-colors shrink-0">
-            <Filter className="w-5 h-5" />
-            <span>Filtros</span>
-          </button>
         </div>
 
         {isSearching && (

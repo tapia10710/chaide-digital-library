@@ -27,8 +27,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm run verify:pdfs
       - run: npm run build:firebase
+      - run: npm run verify:pdfs
 
       - name: Deploy Firebase Hosting
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.HAS_FIREBASE_KEY == 'true'

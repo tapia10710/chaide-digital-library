@@ -147,6 +147,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   role: storedUser?.role || 'guest',
   login: (user) => {
+    const current = get();
+    if (current.user?.id === user.id && current.role === user.role) return;
     documentsRequestSequence += 1;
     window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     set({
@@ -158,6 +160,8 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
   logout: () => {
+    const current = get();
+    if (!current.user && current.role === 'guest') return;
     documentsRequestSequence += 1;
     window.localStorage.removeItem(USER_STORAGE_KEY);
     // Never retain administrator-only drafts in memory after signing out.

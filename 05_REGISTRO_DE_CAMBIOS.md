@@ -345,6 +345,7 @@ Commit de referencia: `510dff6`.
 ### Sesión, categorías y mantenimiento
 
 - El cierre de sesión invalida cargas en curso y vacía inmediatamente documentos administrativos en memoria antes de consultar nuevamente la biblioteca pública.
+- Inicio y cierre de sesión son idempotentes: una notificación duplicada de Firebase ya no cancela la recarga pública ni deja la portada vacía.
 - El administrador recibe también categorías desactivadas, por lo que puede volver a activarlas; el público continúa viendo solo categorías activas.
 - La eliminación oculta primero el catálogo, limpia Firestore en grupos y registra una tarea persistente cuando Drive requiere reintento.
 - El panel ejecuta mantenimiento al entrar y al refrescar: reintenta eliminaciones de Drive, completa limpiezas pendientes y elimina manifiestos huérfanos.

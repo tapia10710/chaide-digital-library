@@ -15,5 +15,6 @@ build.log
 data/logs.txt
 data/logs
 data/search-index
+data/uploads
 npm-debug.log*
 .DS_Store

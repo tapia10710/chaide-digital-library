@@ -1,6 +1,7 @@
 import {
   Bytes,
   collection,
+  deleteField,
   deleteDoc,
   doc,
   getDoc,
@@ -163,30 +164,158 @@ export async function deleteFirebaseDocument(id: string) {
       String(documentSnapshot.data().coverFileId || ''),
     ].filter(Boolean)
     : [];
-  // Apps Script/Drive operations are intentionally sequential. Running two
-  // authenticated mutations concurrently can be throttled and used to leave
-  // an orphaned cover while Firestore was already removed.
-  for (const fileId of driveFileIds) {
-    await deleteFileFromDrive(fileId);
+  if (documentSnapshot.exists()) {
+    // Hide the catalogue first. If a later cleanup step is interrupted, no
+    // partially deleted PDF or draft metadata remains visible to visitors.
+    await setDoc(doc(db, 'documents', id), {
+      visibility: 'private',
+      isActive: false,
+      status: 'processing',
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
   }
 
   const chunks = await getDocs(collection(db, 'pdfFiles', id, 'chunks'));
   const versions = await getDocs(collection(db, 'pdfFiles', id, 'versions'));
   const searchPages = await getDocs(collection(db, 'pdfSearchIndexes', id, 'pages'));
-  await Promise.all(chunks.docs.map((item) => deleteDoc(item.ref)));
-  await Promise.all(versions.docs.map((item) => deleteDoc(item.ref)));
-  await Promise.all(searchPages.docs.map((item) => deleteDoc(item.ref)));
+  await deleteDocumentRefsInGroups(chunks.docs.map((item) => item.ref));
+  await deleteDocumentRefsInGroups(versions.docs.map((item) => item.ref));
+  await deleteDocumentRefsInGroups(searchPages.docs.map((item) => item.ref));
   await deleteDoc(doc(db, 'pdfFiles', id)).catch(() => undefined);
   await deleteDoc(doc(db, 'pdfSearchIndexes', id)).catch(() => undefined);
+
+  const taskRef = doc(db, 'maintenanceTasks', `drive-delete-${id}`);
+  if (driveFileIds.length) {
+    await setDoc(taskRef, {
+      type: 'drive-delete',
+      documentId: id,
+      fileIds: driveFileIds,
+      status: 'pending',
+      updatedAt: serverTimestamp(),
+    });
+  }
   await deleteDoc(doc(db, 'documents', id));
-  await recordAdminAudit('document.delete', id, { driveFilesDeleted: driveFileIds.length });
+
+  // Drive operations remain sequential to avoid Apps Script throttling. A
+  // persistent maintenance task makes retries possible even after the main
+  // Firestore document has already been removed.
+  const pendingDriveFileIds: string[] = [];
+  for (const fileId of driveFileIds) {
+    try {
+      await deleteFileFromDrive(fileId);
+    } catch {
+      pendingDriveFileIds.push(fileId);
+    }
+  }
+  if (pendingDriveFileIds.length) {
+    await setDoc(taskRef, {
+      fileIds: pendingDriveFileIds,
+      status: 'pending',
+      updatedAt: serverTimestamp(),
+    }, { merge: true }).catch(() => undefined);
+  } else {
+    await deleteDoc(taskRef).catch(() => undefined);
+  }
+  await recordAdminAudit('document.delete', id, {
+    driveFilesDeleted: driveFileIds.length - pendingDriveFileIds.length,
+    driveFilesPending: pendingDriveFileIds.length,
+  });
 }
 
-export async function fetchFirebaseCategories(): Promise<CategoryLike[]> {
+async function deleteDocumentRefsInGroups(refs: Array<{ path: string }>) {
+  for (let start = 0; start < refs.length; start += 10) {
+    await Promise.all(refs.slice(start, start + 10).map((reference) =>
+      deleteDoc(doc(db, reference.path))));
+  }
+}
+
+export async function runFirebaseMaintenance() {
+  const summary = {
+    driveFilesDeleted: 0,
+    driveFilesPending: 0,
+    catalogCleanupsCompleted: 0,
+    orphanManifestsDeleted: 0,
+  };
+
+  const tasks = await getDocs(collection(db, 'maintenanceTasks'));
+  for (const task of tasks.docs) {
+    const data = task.data();
+    if (data.type !== 'drive-delete') continue;
+    const pending: string[] = [];
+    for (const fileId of Array.isArray(data.fileIds) ? data.fileIds.map(String) : []) {
+      try {
+        await deleteFileFromDrive(fileId);
+        summary.driveFilesDeleted += 1;
+      } catch {
+        pending.push(fileId);
+      }
+    }
+    if (pending.length) {
+      summary.driveFilesPending += pending.length;
+      await setDoc(task.ref, {
+        fileIds: pending,
+        status: 'pending',
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } else {
+      await deleteDoc(task.ref);
+    }
+  }
+
+  const documents = await getDocs(collection(db, 'documents'));
+  for (const item of documents.docs) {
+    const data = item.data();
+    if (data.maintenanceStatus !== 'cleanup-pending') continue;
+    const storageVersion = String(data.storageVersion || '');
+    const searchVersion = String(data.searchIndexVersion || '');
+    const results = await Promise.allSettled([
+      storageVersion ? finalizePdfVersion(item.id, storageVersion) : Promise.resolve(),
+      searchVersion ? cleanupPdfSearchIndex(item.id, searchVersion) : Promise.resolve(),
+    ]);
+    if (results.every((result) => result.status === 'fulfilled')) {
+      await setDoc(item.ref, {
+        maintenanceStatus: deleteField(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      summary.catalogCleanupsCompleted += 1;
+    }
+  }
+
+  const documentIds = new Set(documents.docs.map((item) => item.id));
+  const [pdfManifests, searchManifests] = await Promise.all([
+    getDocs(collection(db, 'pdfFiles')),
+    getDocs(collection(db, 'pdfSearchIndexes')),
+  ]);
+  for (const manifest of pdfManifests.docs) {
+    if (documentIds.has(manifest.id)) continue;
+    const [orphanChunks, orphanVersions] = await Promise.all([
+      getDocs(collection(db, 'pdfFiles', manifest.id, 'chunks')),
+      getDocs(collection(db, 'pdfFiles', manifest.id, 'versions')),
+    ]);
+    await deleteDocumentRefsInGroups(orphanChunks.docs.map((item) => item.ref));
+    await deleteDocumentRefsInGroups(orphanVersions.docs.map((item) => item.ref));
+    await deleteDoc(manifest.ref);
+    summary.orphanManifestsDeleted += 1;
+  }
+  for (const manifest of searchManifests.docs) {
+    if (documentIds.has(manifest.id)) continue;
+    const orphanPages = await getDocs(collection(db, 'pdfSearchIndexes', manifest.id, 'pages'));
+    await deleteDocumentRefsInGroups(orphanPages.docs.map((item) => item.ref));
+    await deleteDoc(manifest.ref);
+    summary.orphanManifestsDeleted += 1;
+  }
+
+  if (Object.values(summary).some((value) => value > 0)) {
+    await recordAdminAudit('maintenance.run', 'firebase', summary);
+  }
+  return summary;
+}
+
+export async function fetchFirebaseCategories(isAdmin = false): Promise<CategoryLike[]> {
   const snapshot = await getDocs(collection(db, 'categories'));
   return snapshot.docs
     .map((item) => normalizeSnapshot<CategoryLike>(item))
-    .filter((item) => item.active !== false)
+    .filter((item) => isAdmin || item.active !== false)
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 }
 

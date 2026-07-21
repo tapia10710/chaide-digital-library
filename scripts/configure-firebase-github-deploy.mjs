@@ -11,6 +11,7 @@ const outputPath = path.join(outputDir, 'firebase-github-service-account.json');
 const requiredRoles = [
   'roles/firebasehosting.admin',
   'roles/firebaserules.admin',
+  'roles/datastore.viewer',
   'roles/serviceusage.serviceUsageConsumer',
 ];
 
@@ -94,6 +95,18 @@ await request(`https://cloudresourcemanager.googleapis.com/v1/projects/${project
 
 if (hasLocalKey) {
   console.log(JSON.stringify({ outputPath, email, reused: true, roles: requiredRoles }));
+  process.exit(0);
+}
+
+if (process.env.CREATE_LOCAL_FIREBASE_KEY !== '1') {
+  console.log(JSON.stringify({
+    outputPath,
+    email,
+    reused: false,
+    keyCreated: false,
+    roles: requiredRoles,
+    note: 'Permisos reconciliados. Usa CREATE_LOCAL_FIREBASE_KEY=1 solo para crear una clave inicial.',
+  }));
   process.exit(0);
 }
 

@@ -63,6 +63,8 @@ export async function publishPreparedFirebasePdf(
     const cleanupPending = cleanup.some((result) => result.status === 'rejected');
     if (cleanupPending) {
       await saveFirebaseDocument(id, { maintenanceStatus: 'cleanup-pending' } as Partial<DocumentDef>);
+    } else if (document.maintenanceStatus) {
+      await saveFirebaseDocument(id, { maintenanceStatus: 'ready' } as Partial<DocumentDef>);
     }
 
     return {

@@ -1,6 +1,6 @@
 # 06 — Despliegue y respaldo
 
-> **Aviso de actualización manual:** comandos, rutas, responsables y fechas deben comprobarse antes de cada despliegue. Este documento no ejecuta ni programa respaldos. Última revisión manual: **19 de julio de 2026**.
+> **Aviso de actualización manual:** comandos, rutas, responsables y fechas deben comprobarse antes de cada despliegue. Firestore dispone además de un respaldo diario cifrado automatizado. Última revisión manual: **21 de julio de 2026**.
 
 ## Producción Firebase vigente
 
@@ -283,13 +283,23 @@ La compilación genera la aplicación, índices, cMaps y PDF históricos. `.env.
 
 Respaldo: Git conserva código y datos iniciales; Hosting conserva PDF históricos; Firestore contiene metadatos y PDF nuevos; Drive conserva la copia adicional y las imágenes administrativas.
 
-Antes de cada despliegue o cambio masivo se debe generar el respaldo versionable:
+Antes de cada despliegue o cambio masivo se debe generar un respaldo privado adicional:
 
 ```powershell
 npm run backup:firestore
 ```
 
-El resultado se guarda en `backups/firestore-latest.json`. No contiene contraseñas, tokens ni los bytes completos de los PDF; conserva los identificadores de Drive necesarios para reconstruirlos. Las credenciales y copias privadas deben permanecer únicamente en `.env.firebase` o `backups/private/`, ambas fuera de Git.
+El resultado se guarda en `backups/private/firestore-latest.json`, fuera de Git. Puede contener borradores privados e identificadores de Drive, por lo que nunca debe copiarse al repositorio público. No contiene contraseñas, tokens, registros de auditoría ni los bytes completos de los PDF.
+
+El workflow `firestore-backup.yml` ejecuta diariamente la exportación, la cifra con AES-256-GCM y conserva el artefacto cifrado durante 30 días. Utiliza el secreto `FIRESTORE_BACKUP_ENCRYPTION_KEY`; una copia de recuperación permanece localmente en `backups/private/firestore-backup-encryption.key`.
+
+Para comprobar o restaurar un artefacto descargado:
+
+```powershell
+npm run backup:decrypt -- "ruta\firestore-fecha.json.enc"
+```
+
+La restauración genera `backups/private/restored/firestore-restored.json`. El respaldo se considera válido únicamente cuando el archivo restaurado coincide con el original; este ciclo fue comprobado por SHA-256 el 21 de julio de 2026.
 
 Los nuevos documentos se crean como borradores privados. El administrador debe abrir su edición, validar portada, visor, índice y metadatos, y cambiar su visibilidad a pública cuando estén aprobados.
 
@@ -299,9 +309,10 @@ La cuenta de servicio de GitHub requiere exclusivamente:
 
 - `roles/firebasehosting.admin`
 - `roles/firebaserules.admin`
+- `roles/datastore.viewer`
 - `roles/serviceusage.serviceUsageConsumer`
 
-Se configura con `npm run configure:github-firebase`. La clave local se escribe en `backups/private/`, fuera de Git, y debe eliminarse de la estación cuando ya no sea necesaria. El secreto de GitHub conserva la copia usada por el workflow.
+Los permisos se reconcilian con `npm run configure:github-firebase`. El comando no genera claves nuevas por defecto. Para una configuración inicial se usa temporalmente `$env:CREATE_LOCAL_FIREBASE_KEY='1'`; después de guardar el secreto en GitHub se debe ejecutar `npm run revoke:local-firebase-key`, que revoca la clave en IAM y elimina su copia local. El workflow conserva una clave distinta ya configurada como secreto.
 
 Si existen documentos históricos con valores localizados como `Público`, ejecutar una sola vez:
 
@@ -321,4 +332,4 @@ El comando conserva borradores explícitos y normaliza únicamente los campos de
 7. Guardar el documento como `ready` con la versión de índice vigente, `driveFileId`, `coverFileId` e índice lateral.
 8. Actualizar la biblioteca y ejecutar `npm run verify:pdfs`.
 
-La eliminación desde el administrador borra primero y de forma secuencial el PDF y la portada administrados en Drive. El puente verifica que pertenezcan a la carpeta de respaldo y los elimina definitivamente, porque una copia pública enviada solamente a la papelera puede continuar accesible mediante su enlace anterior.
+La eliminación oculta primero el catálogo, borra fragmentos, versiones, índices y metadatos de Firestore, y después elimina secuencialmente el PDF y la portada administrados en Drive. Si Drive no responde, queda una tarea privada en `maintenanceTasks`; el panel vuelve a intentarla automáticamente al abrir o refrescar la administración.

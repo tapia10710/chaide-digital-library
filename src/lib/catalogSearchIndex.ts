@@ -73,9 +73,8 @@ export async function preparePdfCatalog(
   let indexItems: PdfIndexItem[] = [];
 
   try {
-    const { buildIndexFromPdfDocument } = await import('./pdfIndexerService');
-    const index = await buildIndexFromPdfDocument(pdf, { enableOcr: false });
-    indexItems = index.items;
+    const { analyzePdfPageForIndex, buildIndexFromPdfDocument } = await import('./pdfIndexerService');
+    const pageResults = [];
     if (pdf.numPages < 1) throw new Error('El PDF no contiene páginas.');
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
       const page = await pdf.getPage(pageNumber);
@@ -99,16 +98,20 @@ export async function preparePdfCatalog(
         canvas.width = 1;
         canvas.height = 1;
       }
-      const content = await page.getTextContent();
-      const text = cleanExtractedPdfText(
-        content.items
-          .map((item: any) => typeof item?.str === 'string' ? item.str : '')
-          .join(' '),
-      );
+      // Reuse one page analysis for both the persisted text and smart index.
+      // This avoids parsing every page twice on large uploads.
+      const pageResult = await analyzePdfPageForIndex(pdf, pageNumber);
+      pageResults.push(pageResult);
+      const text = cleanExtractedPdfText(pageResult.text);
       pages.push({ pageNumber, text });
       onProgress?.(5 + Math.round((pageNumber / pdf.numPages) * 95));
       if (pageNumber % 4 === 0) await new Promise((resolve) => window.setTimeout(resolve, 0));
     }
+    const index = await buildIndexFromPdfDocument(pdf, {
+      enableOcr: false,
+      pageResults,
+    });
+    indexItems = index.items;
   } finally {
     await pdf.destroy();
   }

@@ -34,6 +34,7 @@ export interface DocumentDef {
   indexItems?: DocumentIndexItem[];
   searchIndexVersion?: string;
   searchIndexStatus?: 'ready' | 'no-text' | 'error';
+  maintenanceStatus?: 'cleanup-pending' | 'ready';
 }
 
 export const mockDocuments: DocumentDef[] = [

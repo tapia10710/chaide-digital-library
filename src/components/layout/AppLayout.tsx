@@ -25,7 +25,7 @@ export default function AppLayout() {
   useEffect(() => {
     if (!requestedCategoriesRef.current && categories.length === 0) {
       requestedCategoriesRef.current = true;
-      fetchCategories();
+      fetchCategories(role === 'admin');
     }
 
     if (!requestedPromotionalBannerRef.current && !hasLoadedPromotionalBanner) {

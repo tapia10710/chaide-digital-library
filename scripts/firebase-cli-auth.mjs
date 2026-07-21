@@ -33,6 +33,20 @@ function findFirebaseTools() {
 }
 
 export async function getFirebaseCliAccessToken() {
+  // GitHub Actions authenticates through Application Default Credentials.
+  // Prefer that short-lived token in CI; keep Firebase CLI login as the local
+  // developer fallback.
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_GHA_CREDS_PATH) {
+    const { google } = await import('googleapis');
+    const auth = new google.auth.GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    });
+    const client = await auth.getClient();
+    const token = await client.getAccessToken();
+    if (token?.token) return token.token;
+    throw new Error('Las credenciales de Google no entregaron un token válido.');
+  }
+
   const toolsPath = findFirebaseTools();
   const configstore = require(path.join(toolsPath, 'lib', 'configstore.js')).configstore;
   const firebaseAuth = require(path.join(toolsPath, 'lib', 'auth.js'));

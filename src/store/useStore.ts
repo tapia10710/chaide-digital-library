@@ -14,6 +14,7 @@ export interface User {
 }
 
 const USER_STORAGE_KEY = 'chaide-digital-library-user';
+let documentsRequestSequence = 0;
 
 function staticWriteError() {
   return new Error('La administración no está disponible en la versión pública.');
@@ -116,7 +117,7 @@ interface AppState {
 
   // Categories
   categories: Category[];
-  fetchCategories: () => Promise<void>;
+  fetchCategories: (isAdmin?: boolean) => Promise<void>;
   addCategory: (cat: Category) => void;
   updateCategory: (id: string, cat: Category) => Promise<void>;
   removeCategory: (id: string) => Promise<void>;
@@ -146,12 +147,28 @@ export const useStore = create<AppState>((set, get) => ({
 
   role: storedUser?.role || 'guest',
   login: (user) => {
+    documentsRequestSequence += 1;
     window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-    set({ user, role: user.role });
+    set({
+      user,
+      role: user.role,
+      documents: [],
+      isLoadingDocs: false,
+      hasLoadedDocs: false,
+    });
   },
   logout: () => {
+    documentsRequestSequence += 1;
     window.localStorage.removeItem(USER_STORAGE_KEY);
-    set({ user: null, role: 'guest' });
+    // Never retain administrator-only drafts in memory after signing out.
+    // The next public route performs a fresh rules-filtered Firestore query.
+    set({
+      user: null,
+      role: 'guest',
+      documents: [],
+      isLoadingDocs: false,
+      hasLoadedDocs: false,
+    });
   },
   
   isSidebarOpen: false,
@@ -165,11 +182,11 @@ export const useStore = create<AppState>((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
 
   categories: [],
-  fetchCategories: async () => {
+  fetchCategories: async (isAdmin = false) => {
     try {
       if (isFirebaseSite) {
         const { fetchFirebaseCategories } = await import('../lib/firebaseCatalog');
-        const firebaseCategories = await fetchFirebaseCategories();
+        const firebaseCategories = await fetchFirebaseCategories(isAdmin);
         if (firebaseCategories.length) {
           set({ categories: firebaseCategories });
           return;
@@ -332,6 +349,7 @@ export const useStore = create<AppState>((set, get) => ({
       }
       if (get().isLoadingDocs) return;
     }
+    const requestSequence = ++documentsRequestSequence;
     set({ isLoadingDocs: true });
     
     const apiUrl = isStaticSite || isFirebaseSite
@@ -343,6 +361,7 @@ export const useStore = create<AppState>((set, get) => ({
           if (isFirebaseSite) {
             const { fetchFirebaseDocuments } = await import('../lib/firebaseCatalog');
             const firebaseDocuments = await fetchFirebaseDocuments(isAdmin);
+            if (requestSequence !== documentsRequestSequence) return;
             set({
               documents: firebaseDocuments.map(normalizePublicDocument),
               isLoadingDocs: false,
@@ -365,6 +384,7 @@ export const useStore = create<AppState>((set, get) => ({
           
           const data = (await res.json()).map(normalizePublicDocument);
           console.log(`[Store] Attempt ${i + 1}: Success! Loaded ${data.length} documents.`);
+          if (requestSequence !== documentsRequestSequence) return;
           set({ documents: data, isLoadingDocs: false, hasLoadedDocs: true });
 
           // Aggressively preload PDFs + warm search indexes in the background so
@@ -380,7 +400,9 @@ export const useStore = create<AppState>((set, get) => ({
         } catch (e: any) {
           console.error(`[Store] Attempt ${i + 1} failed:`, e.name, e.message);
           if (i === retries - 1) {
-            set({ isLoadingDocs: false, hasLoadedDocs: true });
+            if (requestSequence === documentsRequestSequence) {
+              set({ isLoadingDocs: false, hasLoadedDocs: true });
+            }
           } else {
             await new Promise(resolve => setTimeout(resolve, 1500 * (i + 1)));
           }

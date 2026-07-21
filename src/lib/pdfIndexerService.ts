@@ -26,7 +26,7 @@ export interface SmartIndexResult {
 
 type CandidateSource = "auto" | "ocr";
 
-interface HeadingCandidate {
+export interface HeadingCandidate {
   text: string;
   normalized: string;
   pageNumber: number;
@@ -42,9 +42,10 @@ interface HeadingCandidate {
   confidence?: number;
 }
 
-interface PageCandidateResult {
+export interface PageCandidateResult {
   pageNumber: number;
   fullTextLength: number;
+  text: string;
   candidates: HeadingCandidate[];
 }
 
@@ -198,6 +199,7 @@ const getLineCandidatesFromPdfText = (textContent: any, pageNumber: number, page
     .sort((a: any, b: any) => Math.abs(a.y - b.y) > 3 ? a.y - b.y : a.x - b.x);
 
   const fullTextLength = rawItems.reduce((sum: number, item: any) => sum + item.text.length, 0);
+  const text = rawItems.map((item: any) => item.text).join(' ');
   const lines: any[] = [];
 
   for (const item of rawItems) {
@@ -241,7 +243,7 @@ const getLineCandidatesFromPdfText = (textContent: any, pageNumber: number, page
     });
   }).filter(Boolean) as HeadingCandidate[];
 
-  return { pageNumber, fullTextLength, candidates };
+  return { pageNumber, fullTextLength, text, candidates };
 };
 
 const createCandidate = ({
@@ -330,7 +332,7 @@ const createCandidate = ({
   } satisfies HeadingCandidate;
 };
 
-const getPageCandidates = async (pdfDoc: pdfjsLib.PDFDocumentProxy, pageNumber: number): Promise<PageCandidateResult> => {
+export const analyzePdfPageForIndex = async (pdfDoc: pdfjsLib.PDFDocumentProxy, pageNumber: number): Promise<PageCandidateResult> => {
   const page = await pdfDoc.getPage(pageNumber);
   const textContent = await page.getTextContent();
   const viewport = page.getViewport({ scale: 1 });
@@ -447,6 +449,7 @@ const getOcrCandidates = async (
       results.push({
         pageNumber,
         fullTextLength: ocrResult?.data?.text?.length || 0,
+        text: String(ocrResult?.data?.text || ''),
         candidates,
       });
 
@@ -569,7 +572,7 @@ const resolveOutlineItems = async (pdfDoc: pdfjsLib.PDFDocumentProxy): Promise<P
 
 export const buildIndexFromPdfDocument = async (
   pdfDoc: pdfjsLib.PDFDocumentProxy,
-  options: { enableOcr?: boolean; maxOcrPages?: number } = {},
+  options: { enableOcr?: boolean; maxOcrPages?: number; pageResults?: PageCandidateResult[] } = {},
 ): Promise<SmartIndexResult> => {
   const outlineItems = await resolveOutlineItems(pdfDoc);
   if (outlineItems.length > 0) {
@@ -581,21 +584,19 @@ export const buildIndexFromPdfDocument = async (
     };
   }
 
-  const pageResults: PageCandidateResult[] = [];
-  let fullTextLength = 0;
-
-  for (let pageNumber = 1; pageNumber <= pdfDoc.numPages; pageNumber++) {
-    const pageResult = await getPageCandidates(pdfDoc, pageNumber);
-    pageResults.push(pageResult);
-    fullTextLength += pageResult.fullTextLength;
-
-    if (pageNumber % 4 === 0) {
-      await new Promise(resolve => setTimeout(resolve, 0));
+  const pageResults: PageCandidateResult[] = options.pageResults
+    ? [...options.pageResults]
+    : [];
+  if (!options.pageResults) {
+    for (let pageNumber = 1; pageNumber <= pdfDoc.numPages; pageNumber++) {
+      pageResults.push(await analyzePdfPageForIndex(pdfDoc, pageNumber));
+      if (pageNumber % 4 === 0) await new Promise(resolve => setTimeout(resolve, 0));
     }
   }
+  let fullTextLength = pageResults.reduce((sum, page) => sum + page.fullTextLength, 0);
 
   let candidates = pageResults.flatMap(page => page.candidates);
-  let usedOcr = false;
+  let usedOcr = candidates.some((candidate) => candidate.source === 'ocr');
 
   if (options.enableOcr !== false && (fullTextLength < 80 || candidates.length === 0)) {
     const maxOcrPages = Math.min(options.maxOcrPages || 8, pdfDoc.numPages);

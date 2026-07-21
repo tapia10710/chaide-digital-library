@@ -29,7 +29,9 @@ async function listCollection(collectionPath) {
 }
 
 const collections = {};
-for (const name of ['documents', 'categories', 'settings', 'pdfFiles', 'pdfSearchIndexes', 'auditLogs']) {
+// Audit logs intentionally stay out of portable backups because the project
+// repository is public and those records contain administrator identifiers.
+for (const name of ['documents', 'categories', 'settings', 'pdfFiles', 'pdfSearchIndexes']) {
   collections[name] = await listCollection(name);
 }
 
@@ -59,7 +61,9 @@ const backup = {
   subcollections,
 };
 
-const outputDir = path.resolve('backups');
+// Raw backups can contain private drafts and Drive identifiers. Keep them in
+// the gitignored private directory; CI uploads only an encrypted copy.
+const outputDir = path.resolve(process.env.FIRESTORE_BACKUP_DIR || 'backups/private');
 await mkdir(outputDir, { recursive: true });
 const output = path.join(outputDir, 'firestore-latest.json');
 await writeFile(output, `${JSON.stringify(backup, null, 2)}\n`, 'utf8');

@@ -303,7 +303,7 @@ Commit de referencia: `510dff6`.
 
 ### Respaldo y operación
 
-- Añadido `npm run backup:firestore`; el respaldo versionable incluye documentos, categorías, configuración, manifiestos, auditoría e índices, mientras los bytes PDF permanecen en Drive.
+- Añadido `npm run backup:firestore`; el respaldo privado incluye documentos, categorías, configuración, manifiestos e índices, mientras los bytes PDF permanecen en Drive. La auditoría no se exporta.
 - Añadida verificación continua para compilación, biblioteca e implementación de Firebase Hosting.
 - Excluidas las sesiones temporales del navegador y los respaldos privados del repositorio.
 - Las portadas, banners e imágenes de categorías reemplazadas eliminan sus archivos anteriores de Drive.
@@ -339,3 +339,21 @@ Commit de referencia: `510dff6`.
 - El visor cargó el lienzo actual, avanzó al pliego 2–3, se recuperó automáticamente tras recargar y encontró `PDFObject` en la búsqueda interna.
 - La búsqueda global devolvió tres coincidencias del índice persistente sin descargar todos los PDF.
 - El basurero administrativo eliminó la ficha, manifiestos, fragmentos, versión, páginas de búsqueda, PDF y portada de Drive; la biblioteca volvió a 21 catálogos.
+
+## [Firebase 1.2.2] — 2026-07-21
+
+### Sesión, categorías y mantenimiento
+
+- El cierre de sesión invalida cargas en curso y vacía inmediatamente documentos administrativos en memoria antes de consultar nuevamente la biblioteca pública.
+- El administrador recibe también categorías desactivadas, por lo que puede volver a activarlas; el público continúa viendo solo categorías activas.
+- La eliminación oculta primero el catálogo, limpia Firestore en grupos y registra una tarea persistente cuando Drive requiere reintento.
+- El panel ejecuta mantenimiento al entrar y al refrescar: reintenta eliminaciones de Drive, completa limpiezas pendientes y elimina manifiestos huérfanos.
+- Eliminados tres manifiestos vacíos de búsqueda pertenecientes a pruebas antiguas.
+
+### Rendimiento y respaldo privado
+
+- La subida reutiliza un único análisis de cada página para texto e índice, evitando la extracción duplicada. Por decisión operativa, el OCR de PDFs escaneados permanece desactivado.
+- Los respaldos Firestore sin cifrar se guardan exclusivamente en `backups/private/` y ya no se versionan en el repositorio público.
+- Añadido un respaldo diario cifrado mediante GitHub Actions, con artefactos de recuperación durante 30 días.
+- La clave de cifrado se conserva como secreto de GitHub y en el archivo local ignorado `backups/private/firestore-backup-encryption.key`.
+- Verificado un ciclo completo exportar → cifrar → descifrar con igualdad SHA-256.

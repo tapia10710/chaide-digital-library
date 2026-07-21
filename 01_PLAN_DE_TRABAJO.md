@@ -49,8 +49,8 @@ Estado: **en curso**
 - [x] Guía de despliegue y respaldo.
 - [x] Aviso de actualización manual.
 - [ ] Asignar propietario y suplente de operación.
-- [ ] Registrar ubicación segura de credenciales y respaldos.
-- [ ] Ejecutar una prueba de recuperación documentada.
+- [x] Registrar ubicación segura de credenciales y respaldos.
+- [x] Ejecutar una prueba de recuperación documentada.
 
 ### Fase 3 — Calidad y seguridad
 
@@ -76,7 +76,7 @@ Estado: **en curso**
 - [x] Permitir restaurar desde Drive y regenerar el índice desde el administrador.
 - [ ] Definir cómo exportar al build estático los cambios del panel o Drive, si se activa esa modalidad.
 - [ ] Automatizar respaldos de `DATA_DIR`.
-- [ ] Definir retención, cifrado y prueba periódica de copias.
+- [x] Definir retención, cifrado y prueba periódica de copias.
 - [ ] Incorporar monitoreo de `/api/health`, espacio en disco y errores.
 - [ ] Definir ventana y responsable de actualizaciones.
 - [ ] Evaluar almacenamiento de objetos y base de datos administrada si aumenta el uso.
@@ -150,4 +150,4 @@ Pendientes operativos:
 
 - [ ] Configurar un dominio personalizado si Chaide decide sustituir la URL `web.app`.
 - [ ] Revisar mensualmente el consumo de transferencia gratuita.
-- [ ] Exportar periódicamente Firestore y la carpeta de respaldo de Drive.
+- [x] Exportar diariamente Firestore en un artefacto cifrado; Drive conserva cada PDF cargado.

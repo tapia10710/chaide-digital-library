@@ -12,6 +12,7 @@ import FirebaseUploadPanel from '../components/admin/FirebaseUploadPanel';
 import { isFirebaseSite } from '../lib/runtimeConfig';
 import { motion, AnimatePresence } from 'motion/react';
 import { repairFirebaseDocumentFromDrive } from '../lib/firebaseCatalogPublication';
+import { runFirebaseMaintenance } from '../lib/firebaseCatalog';
 
 function DeleteButton({ onDelete, docTitle }: { onDelete: () => void, docTitle: string }) {
   const [confirming, setConfirming] = useState(false);
@@ -82,8 +83,12 @@ export default function AdminDashboard() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchDocuments(true), fetchCategories(), fetchPromotionalBanner()]);
-    setIsRefreshing(false);
+    try {
+      if (isFirebaseSite) await runFirebaseMaintenance();
+      await Promise.all([fetchDocuments(true), fetchCategories(true), fetchPromotionalBanner()]);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleRepair = async (document: DocumentDef) => {
@@ -113,9 +118,14 @@ export default function AdminDashboard() {
     if (didInitialLoadRef.current) return;
     didInitialLoadRef.current = true;
 
-    fetchDocuments(true);
-    fetchCategories();
-    fetchPromotionalBanner();
+    void (async () => {
+      if (isFirebaseSite) await runFirebaseMaintenance().catch(() => undefined);
+      await Promise.all([
+        fetchDocuments(true),
+        fetchCategories(true),
+        fetchPromotionalBanner(),
+      ]);
+    })();
   }, [fetchDocuments, fetchCategories, fetchPromotionalBanner, role, navigate]);
 
   const filteredDocuments = documents.filter(doc => 

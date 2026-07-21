@@ -31,7 +31,7 @@ async function listCollection(collectionPath) {
 const collections = {};
 // Audit logs intentionally stay out of portable backups because the project
 // repository is public and those records contain administrator identifiers.
-for (const name of ['documents', 'categories', 'settings', 'pdfFiles', 'pdfSearchIndexes']) {
+for (const name of ['documents', 'categories', 'settings', 'pdfFiles', 'pdfSearchIndexes', 'maintenanceTasks']) {
   collections[name] = await listCollection(name);
 }
 
@@ -72,5 +72,6 @@ console.log(JSON.stringify({
   documents: collections.documents.length,
   categories: collections.categories.length,
   settings: collections.settings.length,
+  maintenanceTasks: collections.maintenanceTasks.length,
   searchPages: Object.values(subcollections.searchPages).reduce((sum, pages) => sum + pages.length, 0),
 }));

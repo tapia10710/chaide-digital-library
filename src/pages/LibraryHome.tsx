@@ -6,7 +6,7 @@ import { useStore } from '../store/useStore';
 import { sortPdfDocumentsFirst } from '../lib/viewerUtils';
 
 export default function LibraryHome() {
-  const { documents } = useStore();
+  const { documents, isLoadingDocs, hasLoadedDocs } = useStore();
 
   const readyDocuments = useMemo(
     () => documents.filter((doc) => doc.status === 'ready' && doc.isActive !== false),
@@ -35,7 +35,13 @@ export default function LibraryHome() {
       
       <div className="library-home-sections relative z-20">
         <PromotionalBanner />
-        <CatalogSection title="Catálogos sugeridos" docs={suggestedDocuments} viewAllLink="/catalogos" className="home-catalog-section" />
+        <CatalogSection
+          title="Catálogos sugeridos"
+          docs={suggestedDocuments}
+          viewAllLink="/catalogos"
+          className="home-catalog-section"
+          isLoading={isLoadingDocs || !hasLoadedDocs}
+        />
       </div>
     </div>
   );

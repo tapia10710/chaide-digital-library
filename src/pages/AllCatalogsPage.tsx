@@ -12,7 +12,7 @@ import {
 import { useStore } from '../store/useStore';
 
 export default function AllCatalogsPage() {
-  const { documents, categories } = useStore();
+  const { documents, categories, isLoadingDocs, hasLoadedDocs } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -109,12 +109,19 @@ export default function AllCatalogsPage() {
                 </h2>
               </div>
               <span className="text-sm text-gray-500">
-                {section.docs.length} catálogo{section.docs.length === 1 ? '' : 's'}
+                {isLoadingDocs || !hasLoadedDocs
+                  ? 'Cargando…'
+                  : `${section.docs.length} catálogo${section.docs.length === 1 ? '' : 's'}`}
               </span>
             </div>
 
             <div className="all-catalogs-section-panel bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
-              {section.docs.length > 0 ? (
+              {isLoadingDocs || !hasLoadedDocs ? (
+                <div className="flex items-center justify-center gap-3 py-12 text-gray-500" role="status">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
+                  <span>Cargando catálogos…</span>
+                </div>
+              ) : section.docs.length > 0 ? (
                 <div className="all-catalogs-section-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {section.docs.map((doc) => (
                     <PDFCard key={doc.id} doc={doc} />

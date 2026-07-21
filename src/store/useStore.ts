@@ -155,6 +155,7 @@ export const useStore = create<AppState>((set, get) => ({
       user,
       role: user.role,
       documents: [],
+      categories: current.categories.filter((category) => category.active !== false),
       isLoadingDocs: false,
       hasLoadedDocs: false,
     });
@@ -170,6 +171,7 @@ export const useStore = create<AppState>((set, get) => ({
       user: null,
       role: 'guest',
       documents: [],
+      categories: current.categories.filter((category) => category.active !== false),
       isLoadingDocs: false,
       hasLoadedDocs: false,
     });

@@ -213,7 +213,9 @@ export default function FirebaseUploadPanel({
           className="bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3"
         >
           <option value="">Seleccionar categoría</option>
-          {categories.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+          {categories
+            .filter((item) => item.active !== false)
+            .map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
         </select>
         <textarea
           value={description}

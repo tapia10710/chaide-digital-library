@@ -347,6 +347,7 @@ Commit de referencia: `510dff6`.
 - El cierre de sesión invalida cargas en curso y vacía inmediatamente documentos administrativos en memoria antes de consultar nuevamente la biblioteca pública.
 - Inicio y cierre de sesión son idempotentes: una notificación duplicada de Firebase ya no cancela la recarga pública ni deja la portada vacía.
 - El administrador recibe también categorías desactivadas, por lo que puede volver a activarlas; el público continúa viendo solo categorías activas.
+- Los selectores de subida y las rutas públicas excluyen categorías desactivadas, y muestran un estado de carga en lugar de mensajes vacíos mientras Firebase responde.
 - La eliminación oculta primero el catálogo, limpia Firestore en grupos y registra una tarea persistente cuando Drive requiere reintento.
 - El panel ejecuta mantenimiento al entrar y al refrescar: reintenta eliminaciones de Drive, completa limpiezas pendientes y elimina manifiestos huérfanos.
 - Eliminados tres manifiestos vacíos de búsqueda pertenecientes a pruebas antiguas.
@@ -358,3 +359,4 @@ Commit de referencia: `510dff6`.
 - Añadido un respaldo diario cifrado mediante GitHub Actions, con artefactos de recuperación durante 30 días.
 - La clave de cifrado se conserva como secreto de GitHub y en el archivo local ignorado `backups/private/firestore-backup-encryption.key`.
 - Verificado un ciclo completo exportar → cifrar → descifrar con igualdad SHA-256.
+- Los respaldos cifrados incluyen las tareas de mantenimiento pendientes para no perder reintentos de limpieza durante una restauración.

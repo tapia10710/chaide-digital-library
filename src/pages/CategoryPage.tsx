@@ -8,9 +8,10 @@ import { catalogCategories, documentMatchesCatalogCategory } from '../lib/catalo
 export default function CategoryPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { categories, documents } = useStore();
+  const { categories, documents, role, isLoadingDocs, hasLoadedDocs } = useStore();
 
-  const editableCategory = categories.find(c => c.slug === slug);
+  const editableCategory = categories.find(c =>
+    c.slug === slug && (role === 'admin' || c.active !== false));
   const staticCategory = catalogCategories.find(c => c.slug === slug);
   const category = editableCategory || (staticCategory ? {
     id: staticCategory.slug,
@@ -42,7 +43,12 @@ export default function CategoryPage() {
           <p className="text-lg md:text-xl" style={{ color: 'rgba(0, 0, 0, 0.62)' }}>{category.description}</p>
         </header>
 
-        {catalogos.length > 0 ? (
+        {isLoadingDocs || !hasLoadedDocs ? (
+          <div className="flex items-center justify-center gap-3 py-24 text-black/50" role="status">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-black/15 border-t-black/60" />
+            <span>Cargando catálogos…</span>
+          </div>
+        ) : catalogos.length > 0 ? (
           <div className="category-catalog-grid">
             {catalogos.map(catalog => (
               <PDFCard key={catalog.id} doc={catalog} />

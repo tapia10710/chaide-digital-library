@@ -9,9 +9,10 @@ interface SectionProps {
   docs: DocumentDef[];
   viewAllLink?: string;
   className?: string;
+  isLoading?: boolean;
 }
 
-export default function CatalogSection({ title, docs, viewAllLink, className }: SectionProps) {
+export default function CatalogSection({ title, docs, viewAllLink, className, isLoading = false }: SectionProps) {
   const navigate = useNavigate();
 
   return (
@@ -31,7 +32,12 @@ export default function CatalogSection({ title, docs, viewAllLink, className }: 
       </div>
 
       <div className="catalog-section-panel bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
-        {docs.length > 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-3 py-12 text-gray-500" role="status">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
+            <span>Cargando catálogos…</span>
+          </div>
+        ) : docs.length > 0 ? (
           <div className="catalog-section-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {docs.map((doc) => (
               <div key={doc.id} className="pdf-card-wrapper transition-transform hover:scale-[1.02]">

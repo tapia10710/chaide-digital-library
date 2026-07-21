@@ -23,7 +23,7 @@ export default function CategoriesPage() {
         </header>
 
         <section className="category-catalog-grid">
-          {categories.map((category) => {
+          {categories.filter((category) => category.active !== false).map((category) => {
             const Icon = getCategoryIconComponent(category.icon);
             
             return (

@@ -1,14 +1,17 @@
 # No enviar al build de Docker (se reconstruyen o no se necesitan):
 node_modules
 .git
+.github
+.firebase
 dist
 dist-pages
+tmp
+backups
 _legacy_scripts
 ENTREGA-SISTEMAS
 *.log
 build.log
-.env
-.env.local
+.env*
 data/logs.txt
 data/logs
 data/search-index

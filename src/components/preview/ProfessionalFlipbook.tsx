@@ -372,6 +372,7 @@ type QueuedPdfPageProps = {
   eager: boolean;
   priority: boolean;
   docUrl?: string;
+  onRendered?: (pageNumber: number) => void;
 };
 
 const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((props, ref) => {
@@ -417,6 +418,9 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
       return;
     }
     if (!forcedActive) return;
+    // Never cancel a heavy neighbour while it is still painting. Previously
+    // the fixed 1.5 s release could abort complex pages repeatedly.
+    if (!rendered) return;
     releaseTimerRef.current = window.setTimeout(() => {
       releaseTimerRef.current = null;
       setForcedActive(false);
@@ -427,7 +431,7 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
         releaseTimerRef.current = null;
       }
     };
-  }, [forcedActive, props.eager]);
+  }, [forcedActive, props.eager, rendered]);
 
   useEffect(() => {
     const node = rootRef.current;
@@ -533,6 +537,7 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
     try {
       context.drawImage(cached.bitmap, 0, 0);
       setRendered(true);
+      props.onRendered?.(props.number);
     } catch {
       // The bitmap may have been evicted between lookup and paint.
     }
@@ -627,6 +632,7 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
 
         lastRenderScaleRef.current = renderScale;
         setRendered(true);
+        props.onRendered?.(props.number);
         setRenderTry(0);
         recoveryCycleRef.current = 0;
 
@@ -675,6 +681,7 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
     props.docUrl,
     props.height,
     props.number,
+    props.onRendered,
     props.priority,
     props.width,
     props.zoom,
@@ -874,6 +881,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   // Without this separate focus, react-pageflip can reveal an inactive 1x1
   // canvas and leave an apparently blank page on large catalogues.
   const [renderFocusPage, setRenderFocusPage] = useState<number | null>(null);
+  const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set());
+  const [prefetchPages, setPrefetchPages] = useState<Set<number>>(new Set());
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -1250,6 +1259,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       setError(null);
       setLoadProgress(0);
       setReadyToRender(false);
+      setRenderedPages(new Set());
+      setPrefetchPages(new Set());
       setPdf(null);
       setNumPages(0);
       try {
@@ -2101,29 +2112,53 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   }, [activeIndexItem, indexItems]);
 
   const verifyPageWindow = useCallback((pageIndex: number) => {
-    const root = mainAreaRef.current;
-    if (!root || numPages === 0) return;
+    if (numPages === 0) return;
 
     const centerPage = Math.min(Math.max(pageIndex + 1, 1), numPages);
-    const firstPage = Math.max(1, centerPage - 2);
-    const lastPage = Math.min(numPages, centerPage + 4);
+    const visiblePages = dimensions?.isDoublePage && centerPage > 1
+      ? [centerPage, Math.min(centerPage + 1, numPages)]
+      : [centerPage];
+    setPrefetchPages(new Set(visiblePages));
+  }, [dimensions?.isDoublePage, numPages]);
 
-    const verify = () => {
+  const handlePageRendered = useCallback((pageNumber: number) => {
+    setRenderedPages((previous) => {
+      if (previous.has(pageNumber)) return previous;
+      const next = new Set(previous);
+      next.add(pageNumber);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!readyToRender || !dimensions || numPages === 0) return;
+    const centerPage = Math.min(
+      Math.max((renderFocusPage ?? currentPage) + 1, 1),
+      numPages,
+    );
+    const visiblePages = dimensions.isDoublePage && centerPage > 1
+      ? [centerPage, Math.min(centerPage + 1, numPages)]
+      : [centerPage];
+    if (!visiblePages.every((pageNumber) => renderedPages.has(pageNumber))) return;
+
+    const timer = window.setTimeout(() => {
+      const firstPage = Math.max(1, centerPage - 2);
+      const lastPage = Math.min(numPages, centerPage + 3);
+      const next = new Set(visiblePages);
       for (let pageNumber = firstPage; pageNumber <= lastPage; pageNumber++) {
-        const pageNodes = root.querySelectorAll<QueuedPdfPageElement>(
-          `[data-pdf-page="${pageNumber}"]`,
-        );
-        pageNodes.forEach((pageNode) => {
-          if (pageNode.dataset.pdfRendered !== 'true') {
-            pageNode.ensurePdfPage?.();
-          }
-        });
+        next.add(pageNumber);
       }
-    };
-
-    window.requestAnimationFrame(verify);
-    window.setTimeout(verify, 280);
-  }, [numPages]);
+      setPrefetchPages(next);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [
+    currentPage,
+    dimensions,
+    numPages,
+    readyToRender,
+    renderedPages,
+    renderFocusPage,
+  ]);
 
   useEffect(() => {
     if (readyToRender) verifyPageWindow(currentPage);
@@ -2133,10 +2168,11 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     if (!dimensions) return null;
 
     const centerPage = (renderFocusPage ?? currentPage) + 1;
-    const eager =
-      pageNumber >= centerPage - 2 && pageNumber <= centerPage + 4;
-    const priority =
-      Math.abs(pageNumber - centerPage) <= 1;
+    const visiblePages = dimensions.isDoublePage && centerPage > 1
+      ? [centerPage, Math.min(centerPage + 1, numPages)]
+      : [centerPage];
+    const priority = visiblePages.includes(pageNumber);
+    const eager = priority || prefetchPages.has(pageNumber);
 
     const pageHighlights = highlightsVisible ? (searchResults || [])
       .filter(res => res && res.pageNumber === pageNumber)
@@ -2156,6 +2192,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         eager={eager}
         priority={priority}
         docUrl={docCacheKey}
+        onRendered={handlePageRendered}
         highlights={pageHighlights}
         isActiveMatchPage={activeMatchIndex !== -1 && searchResults[activeMatchIndex] && searchResults[activeMatchIndex].pageNumber === pageNumber}
       />

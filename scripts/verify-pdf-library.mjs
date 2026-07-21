@@ -66,7 +66,8 @@ for (const document of documents) {
 
   try {
     if (source.startsWith('/')) {
-      const localFile = path.join(distRoot, ...source.split('/').filter(Boolean));
+      const pathname = new URL(source, 'https://local.invalid').pathname;
+      const localFile = path.join(distRoot, ...pathname.split('/').filter(Boolean));
       await verifyPdfBytes(document, new Uint8Array(await fs.readFile(localFile)));
     } else if (/^https?:\/\//i.test(source)) {
       const response = await fetch(source);

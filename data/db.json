@@ -3956,7 +3956,7 @@
       "category": "Descanso",
       "pageCount": 10,
       "coverUrl": "/storage/covers/upload-1779203272815-cyn7t.jpg",
-      "fileUrl": "/storage/pdfs/upload-1779203272815-cyn7t.pdf",
+      "fileUrl": "/storage/pdfs/upload-1779203272815-cyn7t.pdf?v=20260721-web2&fastImageDecoder=1",
       "tags": [
         "edredones",
         "zafiro",
@@ -3965,7 +3965,7 @@
       "status": "ready",
       "sourceType": "upload",
       "visibility": "Público",
-      "fileSize": 21177169,
+      "fileSize": 3646618,
       "isActive": true,
       "updatedAt": "2026-05-19T15:08:09.991Z",
       "indexItems": [
@@ -4002,7 +4002,7 @@
           "score": 13
         }
       ],
-      "linearized": true,
+      "linearized": false,
       "metadataVersion": "validated-v1"
     },
     {

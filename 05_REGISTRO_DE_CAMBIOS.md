@@ -360,3 +360,16 @@ Commit de referencia: `510dff6`.
 - La clave de cifrado se conserva como secreto de GitHub y en el archivo local ignorado `backups/private/firestore-backup-encryption.key`.
 - Verificado un ciclo completo exportar → cifrar → descifrar con igualdad SHA-256.
 - Los respaldos cifrados incluyen las tareas de mantenimiento pendientes para no perder reintentos de limpieza durante una restauración.
+
+## [Firebase 1.2.3] — 2026-07-21
+
+### Rendimiento del visor
+
+- El catálogo Edredones Zafiro fue aplanado a una sola imagen optimizada por página para conservar su apariencia y evitar decodificar más de 230 capas y máscaras en cada apertura.
+- El visor pinta primero únicamente la portada o el pliego visible; las páginas cercanas se preparan después en tiempo inactivo, sin competir con la página que espera el usuario.
+- PDF.js reduce imágenes internas sobredimensionadas antes de transferirlas al lienzo y ya no cancela una página pesada por superar un temporizador fijo de 1,5 segundos.
+- El PDF web de Zafiro bajó de 21,2 MB a 3,65 MB; el original permanece respaldado en Drive.
+
+### Seguridad de dependencias
+
+- Se actualizó `fast-uri` para corregir la vulnerabilidad de severidad alta detectada por `npm audit`; quedan únicamente avisos moderados de una herramienta de desarrollo que no forma parte del servidor público.

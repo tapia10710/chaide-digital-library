@@ -35,6 +35,8 @@ const bitmaps = new Map<string, Map<number, { bitmap: ImageBitmap; w: number; h:
 type ProgressFn = (p: { loaded: number; total: number }) => void;
 
 function buildTask(url: string) {
+  const useNativeImageDecoder = new URL(url, window.location.origin)
+    .searchParams.get('fastImageDecoder') === '1';
   return pdfjsLib.getDocument({
     url,
     // Keep the HTTP stream enabled. Some large catalogues contain many
@@ -45,6 +47,16 @@ function buildTask(url: string) {
     disableAutoFetch: false,
     disableStream: false,
     rangeChunkSize: 1048576,
+    // Explicitly downsample oversized image layers inside the worker before
+    // they reach the main-thread canvas. Layer-heavy catalogues (notably the
+    // Zafiro PDF) otherwise decode several 20-80 MB masks at full resolution
+    // even though the visible page needs only a fraction of those pixels.
+    canvasMaxAreaInBytes: 12 * 1024 * 1024,
+    // Chromium disables ImageDecoder by default in pdf.js because arbitrary
+    // PDFs may contain problematic colour profiles. Enable it only for our
+    // flattened, standard-RGB web derivative, where native JPEG decoding cuts
+    // the first paint substantially without changing other catalogues.
+    ...(useNativeImageDecoder ? { isImageDecoderSupported: true } : {}),
     cMapUrl: `${window.location.origin}${import.meta.env.BASE_URL}cmaps/`,
     cMapPacked: true,
   });

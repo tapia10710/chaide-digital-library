@@ -18,7 +18,6 @@ type ProgressCallback = (message: string, progress?: number) => void;
 
 export async function publishPreparedFirebasePdf(
   id: string,
-  file: File,
   prepared: PreparedPdfCatalog,
   document: Partial<DocumentDef>,
   onProgress?: ProgressCallback,
@@ -35,7 +34,7 @@ export async function publishPreparedFirebasePdf(
     });
 
     onProgress?.('Guardando PDF para el visor integrado', 0);
-    const storage = await uploadPdfToFirestore(id, file, (progress) => {
+    const storage = await uploadPdfToFirestore(id, prepared.viewerFile, (progress) => {
       onProgress?.('Guardando PDF para el visor integrado', progress);
     });
     storageVersion = storage.version;
@@ -44,7 +43,8 @@ export async function publishPreparedFirebasePdf(
       ...document,
       id,
       fileUrl: storage.url,
-      fileSize: file.size,
+      fileSize: prepared.viewerFile.size,
+      viewerOptimization: prepared.viewerOptimization,
       pageCount: prepared.pageCount,
       storageVersion,
       searchIndexVersion,
@@ -108,13 +108,13 @@ export async function repairFirebaseDocumentFromDrive(
     newCoverFileId = cover?.fileId || '';
     const publication = await publishPreparedFirebasePdf(
       document.id,
-      file,
       prepared,
       {
         ...document,
         coverUrl: cover?.thumbnailUrl || cover?.driveUrl || document.coverUrl,
         coverFileId: cover?.fileId || document.coverFileId,
         indexItems: prepared.indexItems,
+        viewerOptimization: prepared.viewerOptimization,
         driveBackupStatus: 'ready',
       },
       onProgress,

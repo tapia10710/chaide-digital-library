@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import SidebarDrawer from './SidebarDrawer';
 import Header from './Header';
 import MobileBottomNav from './MobileBottomNav';
+import CatalogAssistant from '../assistant/CatalogAssistant';
 import { useStore } from '../../store/useStore';
 
 export default function AppLayout() {
@@ -66,6 +67,7 @@ export default function AppLayout() {
       </main>
       
       <MobileBottomNav />
+      <CatalogAssistant />
     </div>
   );
 }

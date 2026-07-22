@@ -1,6 +1,6 @@
 # 02 — Mapa funcional
 
-> **Aviso de actualización manual:** rutas y recorridos deben actualizarse aquí cuando cambien las pantallas o la navegación. Última revisión manual: **17 de julio de 2026**.
+> **Aviso de actualización manual:** rutas y recorridos deben actualizarse aquí cuando cambien las pantallas o la navegación. Última revisión manual: **21 de julio de 2026**.
 
 ## Modalidades
 
@@ -205,3 +205,31 @@ Todos los PDF publicados utilizan el visor integrado. Google Drive no se utiliza
 ```
 
 Al publicar un PDF nuevo, la aplicación lo divide en fragmentos seguros para Firestore, publica el manifiesto y crea un respaldo adicional en Google Drive cuando el puente está disponible.
+
+## Asistente de catálogos
+
+```text
+Cualquier pantalla pública
+  → botón flotante “Pregúntame”
+  → pregunta libre sobre productos o especificaciones
+  → carga de índices persistidos (sin descargar los PDF)
+  → recuperación de páginas relevantes
+  → respuesta basada únicamente en fragmentos del catálogo
+  → fuente “Catálogo · Página N”
+  → /viewer/:id?page=N&search=termino
+```
+
+Si la información no existe en los índices publicados, el asistente lo indica expresamente y no completa la respuesta con conocimiento externo.
+
+## Control automático de PDF futuros
+
+```text
+/admin → seleccionar PDF
+  → validar firma, páginas, texto y portada
+  → contar imágenes y máscaras por página
+  → complejidad normal: publicar el PDF original en el visor
+  → complejidad alta: generar copia web aplanada
+  → guardar copia web en Firestore
+  → conservar original sin cambios en Drive
+  → publicar el mismo índice textual extraído del original
+```

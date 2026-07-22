@@ -1,6 +1,6 @@
 # 05 — Registro de cambios
 
-> **Aviso de actualización manual:** añadir una entrada en este archivo antes de integrar cada versión. El historial de Git sigue siendo el detalle técnico; este documento resume cambios operativos y funcionales. Última revisión manual: **19 de julio de 2026**.
+> **Aviso de actualización manual:** añadir una entrada en este archivo antes de integrar cada versión. El historial de Git sigue siendo el detalle técnico; este documento resume cambios operativos y funcionales. Última revisión manual: **21 de julio de 2026**.
 
 El proyecto usa por ahora versiones fechadas. Cuando exista una política de lanzamientos, se recomienda adoptar versionado semántico (`MAJOR.MINOR.PATCH`) y etiquetas Git.
 
@@ -373,3 +373,20 @@ Commit de referencia: `510dff6`.
 ### Seguridad de dependencias
 
 - Se actualizó `fast-uri` para corregir la vulnerabilidad de severidad alta detectada por `npm audit`; quedan únicamente avisos moderados de una herramienta de desarrollo que no forma parte del servidor público.
+
+## [Firebase 1.2.4] — 2026-07-21
+
+### Asistente de catálogos
+
+- Añadido un botón flotante en todas las pantallas públicas con panel adaptable a escritorio y celular.
+- El asistente consulta únicamente los 661 índices de página persistidos; no usa servicios externos ni responde con conocimiento ajeno a los PDF.
+- Cada respuesta muestra hasta cuatro fuentes, limita coincidencias débiles y abre el visor en el catálogo y página exactos con una búsqueda válida.
+- Los catálogos históricos leen primero sus índices JSON de Hosting para evitar cientos de lecturas Firestore por conversación; las cargas nuevas continúan usando su índice dinámico versionado.
+- Probada la consulta “edredón Zafiro”: devolvió exclusivamente las páginas 8 y 9 del catálogo correcto y el enlace abrió el pliego 8–9 con resultados internos.
+
+### Prevención de PDF pesados
+
+- La validación administrativa cuenta operaciones de imagen y máscaras en cada página.
+- Los archivos grandes y con capas excesivas generan automáticamente una copia web aplanada a 180 DPI aproximados, mientras Drive conserva el original.
+- El índice, la portada y el texto se obtienen antes de optimizar, por lo que buscador, índice lateral y asistente siguen funcionando.
+- El documento registra modo, tamaños y métricas de complejidad en `viewerOptimization` para auditoría futura.

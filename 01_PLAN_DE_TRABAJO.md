@@ -1,6 +1,6 @@
 # 01 — Plan de trabajo
 
-> **Aviso de actualización manual:** este plan no cambia automáticamente. Debe revisarse al iniciar y cerrar cada fase, versión o despliegue. Última revisión manual: **19 de julio de 2026**.
+> **Aviso de actualización manual:** este plan no cambia automáticamente. Debe revisarse al iniciar y cerrar cada fase, versión o despliegue. Última revisión manual: **21 de julio de 2026**.
 
 ## Estado general
 
@@ -145,6 +145,8 @@ Estado: **en curso**
 - [x] Estabilización del visor: navegación sin carreras, pliegos correctos y caché acotada.
 - [x] Publicación validada con índice de búsqueda versionado por PDF.
 - [x] Búsqueda general desde el visor y búsqueda interna basada en índices persistentes.
+- [x] Asistente conversacional limitado a la información indexada de los PDF, con fuentes y enlaces directos por página.
+- [x] Detección y optimización automática de futuros PDF con exceso de imágenes o máscaras antes de guardarlos en el visor.
 
 Pendientes operativos:
 

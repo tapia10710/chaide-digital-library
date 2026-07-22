@@ -35,6 +35,14 @@ export interface DocumentDef {
   searchIndexVersion?: string;
   searchIndexStatus?: 'ready' | 'no-text' | 'error';
   maintenanceStatus?: 'cleanup-pending' | 'ready';
+  viewerOptimization?: {
+    mode: 'original' | 'flattened';
+    originalSize: number;
+    viewerSize: number;
+    imageOperations: number;
+    maxImageOperationsPerPage: number;
+    reason?: string;
+  };
 }
 
 export const mockDocuments: DocumentDef[] = [

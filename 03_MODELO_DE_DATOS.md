@@ -1,6 +1,6 @@
 # 03 — Modelo de datos
 
-> **Aviso de actualización manual:** este modelo es descriptivo y no se genera desde TypeScript. Debe actualizarse junto con cualquier cambio de campos, persistencia o migración. Última revisión manual: **17 de julio de 2026**.
+> **Aviso de actualización manual:** este modelo es descriptivo y no se genera desde TypeScript. Debe actualizarse junto con cualquier cambio de campos, persistencia o migración. Última revisión manual: **21 de julio de 2026**.
 
 ## Persistencia vigente
 
@@ -197,3 +197,18 @@ Para publicaciones nuevas, `documents/{id}` conserva además:
 - `documents/{documentId}.searchIndexStatus` indica `ready`, `no-text` o `error`.
 
 Una versión sólo es válida cuando contiene exactamente el mismo número de páginas que `documents.pageCount`.
+
+## Rendimiento del PDF para el visor
+
+Las publicaciones nuevas pueden guardar `documents/{documentId}.viewerOptimization`:
+
+| Campo | Tipo | Uso |
+|---|---|---|
+| `mode` | `original \| flattened` | Indica si el visor usa el archivo original o una copia web aplanada. |
+| `originalSize` | `number` | Tamaño del PDF respaldado en Drive. |
+| `viewerSize` | `number` | Tamaño del PDF almacenado para el visor. |
+| `imageOperations` | `number` | Total de operaciones de imagen detectadas. |
+| `maxImageOperationsPerPage` | `number` | Máximo detectado en una página. |
+| `reason` | `string`, opcional | Motivo de la optimización automática. |
+
+El índice de búsqueda siempre se extrae del PDF original antes de aplanarlo. Por ello, el asistente y el buscador conservan el texto aunque la copia del visor tenga una imagen JPEG por página.

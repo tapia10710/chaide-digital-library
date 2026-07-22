@@ -112,7 +112,8 @@ export default function FirebaseUploadPanel({
         externalUrl: driveBackup.downloadUrl,
         driveFileId: driveBackup.fileId,
         driveBackupStatus: 'ready' as const,
-        fileSize: pdf.size,
+        fileSize: prepared.viewerFile.size,
+        viewerOptimization: prepared.viewerOptimization,
         tags: Array.from(new Set(
           tags.split(',').map((tag) => tag.trim()).filter(Boolean),
         )),
@@ -125,7 +126,6 @@ export default function FirebaseUploadPanel({
 
       const publication = await publishPreparedFirebasePdf(
         id,
-        pdf,
         prepared,
         value,
         (stage, progress) => {
@@ -136,7 +136,7 @@ export default function FirebaseUploadPanel({
         ...value,
         ...publication,
         pageCount: prepared.pageCount,
-        fileSize: pdf.size,
+        fileSize: prepared.viewerFile.size,
         searchIndexStatus: prepared.searchablePages > 0 ? 'ready' as const : 'no-text' as const,
         status: 'ready' as const,
       };
@@ -156,7 +156,10 @@ export default function FirebaseUploadPanel({
       const searchMessage = prepared.searchablePages > 0
         ? 'Respaldo e índice verificados.'
         : 'El visor funciona, pero el PDF no tiene texto buscable; puede publicarse después de aplicar OCR.';
-      setMessage(`${publicationMessage} ${searchMessage}`);
+      const optimizationMessage = prepared.viewerOptimization.mode === 'flattened'
+        ? `El visor recibió una copia optimizada (${(prepared.viewerFile.size / 1024 / 1024).toFixed(1)} MB) y Drive conserva el original.`
+        : 'El PDF superó el control de rendimiento del visor.';
+      setMessage(`${publicationMessage} ${searchMessage} ${optimizationMessage}`);
     } catch (error) {
       if (!publicationCommitted) {
         await Promise.allSettled([

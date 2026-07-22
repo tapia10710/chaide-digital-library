@@ -1,6 +1,6 @@
 # 00 — Contexto maestro
 
-> **Aviso de actualización manual:** este documento no se sincroniza automáticamente con el código. Debe revisarse en cada versión, despliegue o decisión funcional importante. Última revisión manual: **17 de julio de 2026**.
+> **Aviso de actualización manual:** este documento no se sincroniza automáticamente con el código. Debe revisarse en cada versión, despliegue o decisión funcional importante. Última revisión manual: **21 de julio de 2026**.
 
 ## Propósito
 
@@ -139,3 +139,10 @@ La producción pública vigente está en `https://biblioteca-catalogos-chaide.we
 - PDF.js y el visor profesional existente abren todos los PDF. Los históricos se leen desde `/storage/`; los nuevos se reconstruyen desde `pdfFiles/{id}/chunks`.
 
 Las secciones anteriores sobre Docker se conservan como alternativa de autohospedaje y reversión. Firebase es el despliegue público principal. Las reglas abiertas de Firestore ya fueron sustituidas: las lecturas se limitan a las colecciones del catálogo y todas las escrituras requieren una cuenta autenticada, verificada y autorizada.
+
+## Estado vigente: asistente y control de rendimiento — 2026-07-21
+
+- Todas las pantallas públicas incluyen un asistente flotante que consulta exclusivamente los índices de texto persistidos de los PDF.
+- El asistente es extractivo y determinista: no usa Internet, no llama a un modelo externo y no inventa información fuera de los catálogos.
+- Cada respuesta conserva las fuentes y abre `/viewer/:id?page=N&search=termino` en la página exacta.
+- Al subir o reparar un PDF se cuentan las operaciones de imagen por página. Los archivos grandes con exceso de imágenes o máscaras se aplanan automáticamente para el visor; Drive conserva siempre el original.

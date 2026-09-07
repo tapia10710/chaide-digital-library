@@ -4,6 +4,8 @@ import { useStore } from '../store/useStore';
 import { ArrowLeft } from 'lucide-react';
 import PDFCard from '../components/library/PDFCard';
 import { catalogCategories, documentMatchesCatalogCategory } from '../lib/catalogCategories';
+import DistributorAccessGate from '../components/access/DistributorAccessGate';
+import { isDistributorCategory } from '../lib/distributorAccess';
 
 export default function CategoryPage() {
   const { slug } = useParams();
@@ -13,13 +15,7 @@ export default function CategoryPage() {
   const editableCategory = categories.find(c =>
     c.slug === slug && (role === 'admin' || c.active !== false));
   const staticCategory = catalogCategories.find(c => c.slug === slug);
-  const category = editableCategory || (staticCategory ? {
-    id: staticCategory.slug,
-    name: staticCategory.label,
-    slug: staticCategory.slug,
-    description: staticCategory.description,
-    icon: staticCategory.icon,
-  } : null);
+  const category = editableCategory || null;
   const catalogos = documents.filter(doc =>
     doc.category === category?.name ||
     Boolean(staticCategory && documentMatchesCatalogCategory(doc, staticCategory))
@@ -27,7 +23,7 @@ export default function CategoryPage() {
 
   if (!category) return <div className="text-[#111] p-8 font-medium">Categoría no encontrada</div>;
 
-  return (
+  const page = (
     <main className="min-h-screen bg-[#f5f5f2] pt-24 pb-20 px-4 md:px-8" style={{ color: '#111', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", sans-serif' }}>
       <div className="max-w-[1500px] mx-auto">
         <button 
@@ -62,4 +58,10 @@ export default function CategoryPage() {
       </div>
     </main>
   );
+
+  if (isDistributorCategory(slug, category.name)) {
+    return <DistributorAccessGate bypass={role === 'admin'}>{page}</DistributorAccessGate>;
+  }
+
+  return page;
 }

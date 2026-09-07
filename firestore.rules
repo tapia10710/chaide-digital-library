@@ -59,6 +59,16 @@ service cloud.firestore {
       }
     }
 
+    match /catalogSearchPages/{pageId} {
+      allow read: if isAdmin() || resource.data.isPublic == true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /catalogSearchMeta/{metaId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /admins/{userId} {
       allow read, create, update: if isAdmin() && request.auth.uid == userId;
       allow delete: if false;

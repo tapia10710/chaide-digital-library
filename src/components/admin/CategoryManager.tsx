@@ -10,6 +10,11 @@ import {
 } from '../../lib/categoryIconRegistry';
 import { catalogCategories } from '../../lib/catalogCategories';
 import { isFirebaseSite } from '../../lib/runtimeConfig';
+import {
+  FALLBACK_CATEGORY_NAME,
+  isFallbackCategory,
+  normalizeCategoryIdentity,
+} from '../../lib/categoryStructure';
 
 const BASE_CATEGORY_SLUGS = new Set<string>(catalogCategories.map((category) => category.slug));
 
@@ -36,10 +41,11 @@ function IconPicker({ selected, onSelect }: { selected: string, onSelect: (key: 
 }
 
 export default function CategoryManager() {
-  const { categories, addCategory, updateCategory, removeCategory } = useStore();
+  const { categories, documents, addCategory, updateCategory, removeCategory } = useStore();
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] = useState('');
   
   // Form State
   const [name, setName] = useState('');
@@ -149,6 +155,36 @@ export default function CategoryManager() {
     }
     const IconComp = CATEGORY_ICON_COMPONENTS[iconKey || 'Tag'] || Tag;
     return <IconComp className="w-6 h-6" />;
+  };
+
+  const handleDelete = async (category: Category) => {
+    const references = new Set([
+      normalizeCategoryIdentity(category.id),
+      normalizeCategoryIdentity(category.name),
+      normalizeCategoryIdentity(category.slug),
+    ]);
+    if (isFallbackCategory(category)) {
+      window.alert(`“${FALLBACK_CATEGORY_NAME}” es la categoría de respaldo y no se puede eliminar.`);
+      return;
+    }
+    const affectedDocuments = documents.filter((document) =>
+      references.has(normalizeCategoryIdentity(document.category || ''))).length;
+    const detail = affectedDocuments > 0
+      ? `\n\n${affectedDocuments} catálogo${affectedDocuments === 1 ? '' : 's'} pasar${affectedDocuments === 1 ? 'á' : 'án'} automáticamente a “${FALLBACK_CATEGORY_NAME}”.`
+      : '\n\nNo hay catálogos asignados a esta categoría.';
+    if (!window.confirm(`¿Seguro que deseas eliminar la categoría “${category.name}”?${detail}`)) return;
+
+    setDeletingCategoryId(category.id);
+    try {
+      const result = await removeCategory(category.id);
+      window.alert(
+        `Categoría eliminada correctamente. ${result.reassignedDocuments} catálogo${result.reassignedDocuments === 1 ? '' : 's'} reasignado${result.reassignedDocuments === 1 ? '' : 's'} a “${result.fallbackCategory.name}”.`,
+      );
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'No se pudo eliminar la categoría.');
+    } finally {
+      setDeletingCategoryId('');
+    }
   };
 
   return (
@@ -314,7 +350,7 @@ export default function CategoryManager() {
                   <p className="text-xs text-gray-500">/{cat.slug}</p>
                 </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 <button 
                   onClick={() => setEditingCategory(cat)} 
                   className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
@@ -322,17 +358,14 @@ export default function CategoryManager() {
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
-                {!isBaseCategory && (
+                {!isFallbackCategory(cat) && (
                   <button 
-                    onClick={() => {
-                      if (window.confirm(`¿Seguro que deseas eliminar la categoría "${cat.name}"?`)) {
-                        removeCategory(cat.id);
-                      }
-                    }} 
+                    onClick={() => void handleDelete(cat)}
+                    disabled={Boolean(deletingCategoryId)}
                     className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                    title="Eliminar"
+                    title={isBaseCategory ? 'Eliminar categoría base' : 'Eliminar'}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className={`w-4 h-4 ${deletingCategoryId === cat.id ? 'animate-pulse' : ''}`} />
                   </button>
                 )}
               </div>

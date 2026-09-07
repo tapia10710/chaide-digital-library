@@ -1,7 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, BookOpen, Bot, Loader2, MessageCircle, Send, ShieldCheck, X } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Bot, Loader2, MessageCircle, RefreshCw, Send, ShieldCheck, SpellCheck, Trash2, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { answerCatalogQuestion, type CatalogAssistantSource } from '../../lib/catalogAssistant';
+import {
+  answerCatalogQuestion,
+  pruneCatalogAssistantCache,
+  type CatalogAssistantSource,
+} from '../../lib/catalogAssistant';
+import type { CatalogSpellingCorrection } from '../../lib/catalogAssistantSpelling';
+import { contextualizeCatalogQuestion } from '../../lib/catalogAssistantSpelling';
+import { filterCurrentAssistantSources } from '../../lib/catalogAssistantFreshness';
+import { requestGroundedCatalogAnswer } from '../../lib/catalogAssistantRemote';
+import { createCatalogViewerHref } from '../../lib/catalogViewerLink';
+import { isFirebaseSite } from '../../lib/runtimeConfig';
+import { canViewDistributorDocument } from '../../lib/distributorAccess';
 import { useStore } from '../../store/useStore';
 
 type ChatMessage = {
@@ -11,6 +22,11 @@ type ChatMessage = {
   sources?: CatalogAssistantSource[];
   query?: string;
   detail?: string;
+  answerMode?: 'ai' | 'search';
+  retryQuestion?: string;
+  kind?: 'error' | 'notice';
+  corrections?: CatalogSpellingCorrection[];
+  contextUsed?: boolean;
 };
 
 const INITIAL_MESSAGE: ChatMessage = {
@@ -29,6 +45,9 @@ export default function CatalogAssistant() {
   const documents = useStore((state) => state.documents);
   const fetchDocuments = useStore((state) => state.fetchDocuments);
   const hasLoadedDocs = useStore((state) => state.hasLoadedDocs);
+  const role = useStore((state) => state.role);
+  const syncDocuments = useStore((state) => state.syncDocuments);
+  const documentsSyncStatus = useStore((state) => state.documentsSyncStatus);
   const location = useLocation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -36,8 +55,10 @@ export default function CatalogAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [isThinking, setIsThinking] = useState(false);
   const [progress, setProgress] = useState('');
+  const [sourceOpening, setSourceOpening] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const conversationContextRef = useRef<{ question: string; catalogId: string } | null>(null);
 
   const currentCatalogId = useMemo(() => {
     const match = location.pathname.match(/^\/viewer\/([^/]+)/);
@@ -55,7 +76,11 @@ export default function CatalogAssistant() {
   }, [isOpen]);
 
   useEffect(() => {
-    messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' });
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    messagesRef.current?.scrollTo({
+      top: messagesRef.current.scrollHeight,
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
   }, [messages, isThinking, progress]);
 
   useEffect(() => {
@@ -66,6 +91,21 @@ export default function CatalogAssistant() {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [isOpen]);
+
+  const getFreshDocuments = async () => {
+    if (isFirebaseSite) {
+      const { fetchFirebaseDocuments } = await import('../../lib/firebaseCatalog');
+      const freshDocuments = await fetchFirebaseDocuments(role === 'admin');
+      syncDocuments(freshDocuments);
+      pruneCatalogAssistantCache(freshDocuments);
+      return freshDocuments.filter((document) => canViewDistributorDocument(document, role));
+    }
+    if (!useStore.getState().hasLoadedDocs) await fetchDocuments(role === 'admin');
+    const currentDocuments = useStore.getState().documents;
+    pruneCatalogAssistantCache(currentDocuments);
+    return (currentDocuments.length ? currentDocuments : documents)
+      .filter((document) => canViewDistributorDocument(document, role));
+  };
 
   const submitQuestion = async (rawQuestion: string) => {
     const question = rawQuestion.trim();
@@ -80,31 +120,79 @@ export default function CatalogAssistant() {
     setProgress('Consultando los índices de los catálogos…');
 
     try {
-      if (!useStore.getState().hasLoadedDocs) await fetchDocuments();
-      const availableDocuments = useStore.getState().documents;
-      const answer = await answerCatalogQuestion(
+      const availableDocuments = await getFreshDocuments();
+      const contextualQuestion = contextualizeCatalogQuestion(
         question,
-        availableDocuments.length ? availableDocuments : documents,
-        currentCatalogId,
+        conversationContextRef.current?.question,
+      );
+      const scopedDocuments = contextualQuestion.usedContext && conversationContextRef.current
+        ? availableDocuments.filter((document) => document.id === conversationContextRef.current?.catalogId)
+        : availableDocuments;
+      let answer = await answerCatalogQuestion(
+        contextualQuestion.question,
+        scopedDocuments,
+        contextualQuestion.usedContext
+          ? conversationContextRef.current?.catalogId
+          : currentCatalogId,
         (completed, total) => setProgress(`Revisando catálogos ${completed}/${total}…`),
       );
+
+      // Re-read Firestore after retrieval. If a catalogue was replaced or
+      // deleted while the search was running, discard every stale source and
+      // run the search once more against the newest version.
+      if (isFirebaseSite && answer.sources.length > 0) {
+        setProgress('Confirmando que las fuentes siguen publicadas…');
+        const latestDocuments = await getFreshDocuments();
+        const currentSources = filterCurrentAssistantSources(answer.sources, latestDocuments);
+        if (currentSources.length !== answer.sources.length) {
+          setProgress('El catálogo cambió; actualizando la respuesta…');
+          const latestScopedDocuments = contextualQuestion.usedContext && conversationContextRef.current
+            ? latestDocuments.filter((document) => document.id === conversationContextRef.current?.catalogId)
+            : latestDocuments;
+          answer = await answerCatalogQuestion(
+            contextualQuestion.question,
+            latestScopedDocuments,
+            contextualQuestion.usedContext
+              ? conversationContextRef.current?.catalogId
+              : currentCatalogId,
+          );
+        } else {
+          answer = { ...answer, sources: currentSources };
+        }
+      }
+      setProgress(answer.sources.length > 0
+        ? 'Preparando una respuesta basada en las fuentes…'
+        : 'Terminando la consulta…');
+      const generatedAnswer = answer.sources.length > 0
+        ? await requestGroundedCatalogAnswer(answer.interpretedQuestion, answer.sources)
+        : null;
+      if (answer.sources.length > 0) {
+        conversationContextRef.current = {
+          question: answer.interpretedQuestion,
+          catalogId: answer.sources[0].catalogId,
+        };
+      }
       setMessages((previous) => [...previous, {
         id: crypto.randomUUID(),
         role: 'assistant',
-        text: answer.text,
-        sources: answer.sources,
+        text: generatedAnswer?.text || answer.text,
+        sources: generatedAnswer?.sources || answer.sources,
         query: question,
         detail: answer.searchedPages
-          ? `Verificado en ${answer.searchedPages} páginas de ${answer.searchedCatalogs} catálogos.`
+          ? `${generatedAnswer ? 'Respuesta IA verificada' : 'Resultado del buscador'} en ${answer.searchedPages} páginas de ${answer.searchedCatalogs} catálogos.`
           : undefined,
+        answerMode: generatedAnswer ? 'ai' : 'search',
+        corrections: answer.corrections,
+        contextUsed: contextualQuestion.usedContext,
       }]);
     } catch (error) {
+      console.warn('[Assistant] Catalogue query failed.', error);
       setMessages((previous) => [...previous, {
         id: crypto.randomUUID(),
         role: 'assistant',
-        text: error instanceof Error
-          ? `No pude consultar los índices en este momento: ${error.message}`
-          : 'No pude consultar los índices en este momento. Inténtalo nuevamente.',
+        text: 'No pude confirmar los catálogos publicados en este momento. No mostraré información que pueda estar desactualizada.',
+        retryQuestion: question,
+        kind: 'error',
       }]);
     } finally {
       setIsThinking(false);
@@ -112,13 +200,31 @@ export default function CatalogAssistant() {
     }
   };
 
-  const openSource = (source: CatalogAssistantSource, query: string) => {
-    const params = new URLSearchParams({
-      page: String(source.pageNumber),
-      search: source.searchTerm || query,
-    });
-    setIsOpen(false);
-    navigate(`/viewer/${encodeURIComponent(source.catalogId)}?${params.toString()}`);
+  const openSource = async (source: CatalogAssistantSource, query: string) => {
+    const sourceKey = `${source.catalogId}:${source.indexVersion}:${source.pageNumber}`;
+    if (sourceOpening) return;
+    setSourceOpening(sourceKey);
+    try {
+      const freshDocuments = await getFreshDocuments();
+      if (filterCurrentAssistantSources([source], freshDocuments).length !== 1) {
+        setMessages((previous) => [...previous, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          text: 'Esa fuente fue reemplazada o retirada. Ya eliminé la referencia anterior; vuelve a realizar la consulta para obtener información vigente.',
+          retryQuestion: query,
+          kind: 'notice',
+        }]);
+        return;
+      }
+      setIsOpen(false);
+      navigate(createCatalogViewerHref({
+        catalogId: source.catalogId,
+        pageNumber: source.pageNumber,
+        search: source.searchTerm || query,
+      }));
+    } finally {
+      setSourceOpening('');
+    }
   };
 
   return (
@@ -138,25 +244,72 @@ export default function CatalogAssistant() {
                 <p><span /> Responde desde los PDFs</p>
               </div>
             </div>
-            <button
-              type="button"
-              className="catalog-assistant-icon-button"
-              onClick={() => setIsOpen(false)}
-              aria-label="Cerrar asistente"
-            >
-              <X aria-hidden="true" />
-            </button>
+            <div className="catalog-assistant-header-actions">
+              {messages.length > 1 && (
+                <button
+                  type="button"
+                  className="catalog-assistant-icon-button"
+                  onClick={() => {
+                    conversationContextRef.current = null;
+                    setMessages([INITIAL_MESSAGE]);
+                  }}
+                  aria-label="Borrar conversación"
+                  title="Borrar conversación"
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
+              )}
+              <button
+                type="button"
+                className="catalog-assistant-icon-button"
+                onClick={() => setIsOpen(false)}
+                aria-label="Cerrar asistente"
+              >
+                <X aria-hidden="true" />
+              </button>
+            </div>
           </header>
 
-          <div className="catalog-assistant-trust">
+          <div className={`catalog-assistant-trust is-${documentsSyncStatus}`} role="status">
             <ShieldCheck aria-hidden="true" />
-            <span>Solo usa el texto indexado de los catálogos publicados.</span>
+            <span>
+              {documentsSyncStatus === 'syncing' && 'Sincronizando el conocimiento publicado…'}
+              {documentsSyncStatus === 'live' && 'Conocimiento actualizado automáticamente desde los PDFs publicados.'}
+              {documentsSyncStatus === 'error' && 'Cada consulta se verificará antes de responder.'}
+              {documentsSyncStatus === 'idle' && 'Solo usa el texto indexado de los catálogos publicados.'}
+            </span>
           </div>
 
-          <div className="catalog-assistant-messages" ref={messagesRef} aria-live="polite">
+          <div
+            className="catalog-assistant-messages"
+            ref={messagesRef}
+            aria-live="polite"
+            aria-busy={isThinking}
+          >
             {messages.map((message) => (
-              <article key={message.id} className={`catalog-assistant-message is-${message.role}`}>
+              <article
+                key={message.id}
+                className={`catalog-assistant-message is-${message.role}${message.kind ? ` is-${message.kind}` : ''}`}
+              >
                 <div className="catalog-assistant-bubble">{message.text}</div>
+                {message.corrections && message.corrections.length > 0 && (
+                  <div className="catalog-assistant-correction" role="status">
+                    <SpellCheck aria-hidden="true" />
+                    <span>
+                      Interpreté {message.corrections.map((correction, index) => (
+                        <React.Fragment key={`${correction.from}-${correction.to}`}>
+                          {index > 0 && ', '}
+                          <s>{correction.from}</s> como <strong>{correction.to}</strong>
+                        </React.Fragment>
+                      ))}.
+                    </span>
+                  </div>
+                )}
+                {message.contextUsed && (
+                  <div className="catalog-assistant-context-note">
+                    Continué con el producto de la pregunta anterior.
+                  </div>
+                )}
                 {message.sources && message.sources.length > 0 && (
                   <div className="catalog-assistant-sources">
                     <p>Fuentes encontradas</p>
@@ -164,10 +317,13 @@ export default function CatalogAssistant() {
                       <button
                         type="button"
                         key={`${source.catalogId}-${source.pageNumber}`}
-                        onClick={() => openSource(source, message.query || '')}
+                        onClick={() => void openSource(source, message.query || '')}
                         className="catalog-assistant-source"
+                        disabled={Boolean(sourceOpening)}
                       >
-                        <BookOpen aria-hidden="true" />
+                        {sourceOpening === `${source.catalogId}:${source.indexVersion}:${source.pageNumber}`
+                          ? <Loader2 className="catalog-assistant-spin" aria-hidden="true" />
+                          : <BookOpen aria-hidden="true" />}
                         <span>
                           <strong>{source.title}</strong>
                           <small>Página {source.pageNumber} · Abrir en el visor</small>
@@ -177,7 +333,22 @@ export default function CatalogAssistant() {
                     ))}
                   </div>
                 )}
-                {message.detail && <small className="catalog-assistant-detail">{message.detail}</small>}
+                {message.detail && (
+                  <small className={`catalog-assistant-detail${message.answerMode ? ` is-${message.answerMode}` : ''}`}>
+                    {message.detail}
+                  </small>
+                )}
+                {message.retryQuestion && (
+                  <button
+                    type="button"
+                    className="catalog-assistant-retry"
+                    onClick={() => void submitQuestion(message.retryQuestion || '')}
+                    disabled={isThinking}
+                  >
+                    <RefreshCw aria-hidden="true" />
+                    Consultar nuevamente
+                  </button>
+                )}
               </article>
             ))}
 
@@ -214,13 +385,17 @@ export default function CatalogAssistant() {
               onChange={(event) => setInput(event.target.value)}
               placeholder="Pregunta por un producto o característica…"
               autoComplete="off"
+              maxLength={600}
               disabled={isThinking}
+              aria-describedby="catalog-assistant-help"
             />
             <button type="submit" disabled={!input.trim() || isThinking} aria-label="Enviar pregunta">
               <Send aria-hidden="true" />
             </button>
           </form>
-          <p className="catalog-assistant-footnote">Las respuestas muestran siempre el catálogo y la página de origen.</p>
+          <p id="catalog-assistant-help" className="catalog-assistant-footnote">
+            Las respuestas muestran siempre el catálogo, su versión vigente y la página de origen.
+          </p>
         </section>
       )}
 

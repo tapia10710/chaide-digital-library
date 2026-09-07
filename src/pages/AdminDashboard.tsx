@@ -9,10 +9,13 @@ import AdminEditModal from '../components/admin/AdminEditModal';
 import CategoryManager from '../components/admin/CategoryManager';
 import PromotionalBannerManager from '../components/admin/PromotionalBannerManager';
 import FirebaseUploadPanel from '../components/admin/FirebaseUploadPanel';
+import DriveCatalogSyncPanel from '../components/admin/DriveCatalogSyncPanel';
 import { isFirebaseSite } from '../lib/runtimeConfig';
 import { motion, AnimatePresence } from 'motion/react';
 import { repairFirebaseDocumentFromDrive } from '../lib/firebaseCatalogPublication';
 import { runFirebaseMaintenance } from '../lib/firebaseCatalog';
+
+const DOCUMENTS_PER_PAGE = 25;
 
 function DeleteButton({ onDelete, docTitle }: { onDelete: () => void, docTitle: string }) {
   const [confirming, setConfirming] = useState(false);
@@ -71,10 +74,21 @@ function DeleteButton({ onDelete, docTitle }: { onDelete: () => void, docTitle: 
 }
 
 export default function AdminDashboard() {
-  const { documents, removeDocument, fetchDocuments, fetchCategories, fetchPromotionalBanner, role } = useStore();
+  const {
+    documents,
+    isLoadingDocs,
+    hasLoadedDocs,
+    documentsSyncStatus,
+    removeDocument,
+    fetchDocuments,
+    fetchCategories,
+    fetchPromotionalBanner,
+    role,
+  } = useStore();
   const [editingDoc, setEditingDoc] = useState<DocumentDef | null>(null);
   const [replaceDocId, setReplaceDocId] = useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
+  const [documentPage, setDocumentPage] = useState(1);
   const navigate = useNavigate();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [repairingId, setRepairingId] = useState('');
@@ -132,6 +146,19 @@ export default function AdminDashboard() {
     doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     doc.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const documentPageCount = Math.max(1, Math.ceil(filteredDocuments.length / DOCUMENTS_PER_PAGE));
+  const visibleDocuments = filteredDocuments.slice(
+    (documentPage - 1) * DOCUMENTS_PER_PAGE,
+    documentPage * DOCUMENTS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    setDocumentPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setDocumentPage((current) => Math.min(current, documentPageCount));
+  }, [documentPageCount]);
 
   const traducirSource = (source?: string) => {
     if (source === 'upload') return 'Local';
@@ -142,22 +169,40 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Panel Administrador</h1>
           <p className="text-gray-400 mt-1">Gestiona la biblioteca digital, sube PDFs y ajusta configuraciones.</p>
         </div>
-        <button 
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
-        >
-          <div className={isRefreshing ? "animate-spin" : ""}>
-             <Search className="w-4 h-4 translate-x-[-1px] rotate-90" />
-          </div>
-          {isRefreshing ? 'Sincronizando...' : 'Refrescar Biblioteca'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {isFirebaseSite && <DriveCatalogSyncPanel />}
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
+          >
+            <div className={isRefreshing ? "animate-spin" : ""}>
+              <Search className="w-4 h-4 translate-x-[-1px] rotate-90" />
+            </div>
+            {isRefreshing ? 'Sincronizando...' : 'Refrescar Biblioteca'}
+          </button>
+        </div>
       </div>
+
+      {(!hasLoadedDocs || documentsSyncStatus === 'error') && (
+        <div
+          className={`mb-5 rounded-xl border px-4 py-3 text-sm ${
+            documentsSyncStatus === 'error'
+              ? 'border-red-400/25 bg-red-500/10 text-red-100'
+              : 'border-blue-400/20 bg-blue-500/10 text-blue-100'
+          }`}
+          role="status"
+        >
+          {documentsSyncStatus === 'error'
+            ? 'No se pudo actualizar la biblioteca. Usa “Refrescar Biblioteca” para volver a intentarlo.'
+            : 'Sincronizando catálogos, categorías y configuración administrativa…'}
+        </div>
+      )}
 
       {isFirebaseSite
         ? <FirebaseUploadPanel initialReplaceDocId={replaceDocId} />
@@ -202,7 +247,21 @@ export default function AdminDashboard() {
             </thead>
             <tbody className="divide-y divide-white/5">
               <AnimatePresence mode="popLayout">
-                {filteredDocuments.map((doc) => (
+                {!hasLoadedDocs && (
+                  <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <td colSpan={5} className="px-6 py-10 text-center text-gray-400">
+                      {isLoadingDocs ? 'Cargando documentos de la biblioteca…' : 'Preparando la biblioteca…'}
+                    </td>
+                  </motion.tr>
+                )}
+                {hasLoadedDocs && filteredDocuments.length === 0 && (
+                  <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <td colSpan={5} className="px-6 py-10 text-center text-gray-400">
+                      {searchTerm ? 'No hay documentos que coincidan con la búsqueda.' : 'No hay documentos registrados.'}
+                    </td>
+                  </motion.tr>
+                )}
+                {visibleDocuments.map((doc) => (
                   <motion.tr 
                     layout
                     initial={{ opacity: 0 }}
@@ -247,9 +306,17 @@ export default function AdminDashboard() {
                        <button 
                          onClick={() => {
                            setReplaceDocId(undefined);
-                           setTimeout(() => setReplaceDocId(doc.id), 10);
+                           window.setTimeout(() => {
+                             setReplaceDocId(doc.id);
+                             window.requestAnimationFrame(() => {
+                               document
+                                 .getElementById('admin-pdf-operation-panel')
+                                 ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                             });
+                           }, 10);
                          }}
                          title={`Reemplazar PDF de ${doc.title}`}
+                         aria-label={`Reemplazar PDF de ${doc.title}`}
                          className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
                        >
                         <RefreshCw className="w-4 h-4" />
@@ -272,6 +339,37 @@ export default function AdminDashboard() {
           </tbody>
         </table>
       </div>
+      {hasLoadedDocs && filteredDocuments.length > DOCUMENTS_PER_PAGE && (
+        <nav
+          className="flex flex-col gap-3 border-t border-white/10 bg-[#0B0F19] px-4 py-3 text-xs text-gray-400 sm:flex-row sm:items-center sm:justify-between"
+          aria-label="Paginación de documentos administrativos"
+        >
+          <span>
+            Mostrando {(documentPage - 1) * DOCUMENTS_PER_PAGE + 1}–{Math.min(documentPage * DOCUMENTS_PER_PAGE, filteredDocuments.length)} de {filteredDocuments.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDocumentPage((current) => Math.max(1, current - 1))}
+              disabled={documentPage === 1}
+              className="rounded-lg border border-white/10 px-3 py-1.5 font-semibold text-gray-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <span className="min-w-16 text-center font-semibold tabular-nums text-gray-300">
+              {documentPage} / {documentPageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setDocumentPage((current) => Math.min(documentPageCount, current + 1))}
+              disabled={documentPage === documentPageCount}
+              className="rounded-lg border border-white/10 px-3 py-1.5 font-semibold text-gray-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Siguiente
+            </button>
+          </div>
+        </nav>
+      )}
       </div>
 
       {editingDoc && (

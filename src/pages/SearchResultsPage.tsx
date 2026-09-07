@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, AlertCircle, Search, X, ArrowRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -7,6 +7,14 @@ import { getCachedPdfData, setCachedPdfData } from '../lib/backgroundIndexer';
 import { isFirebaseSite, isStaticSite } from '../lib/runtimeConfig';
 import { getDocumentSearchText } from '../lib/catalogCategories';
 import { loadPersistedCatalogSearchIndex } from '../lib/catalogSearchIndex';
+import { rankCatalogSearchResults } from '../lib/catalogSearchResults';
+import { createCatalogViewerHref } from '../lib/catalogViewerLink';
+import { canViewDistributorDocument } from '../lib/distributorAccess';
+import {
+  applyCatalogSpellingCorrections,
+  buildCatalogVocabulary,
+  resolveCatalogQueryTokens,
+} from '../lib/catalogAssistantSpelling';
 
 // pdfjs is heavy and only needed for the rare client-side fallback indexing
 // path (the main search runs server-side via /api/search). Load it lazily so
@@ -56,6 +64,7 @@ interface GlobalSearchResult {
 }
 
 const indexCache: Record<string, CatalogSearchIndex> = {};
+const RESULTS_PER_PAGE = 20;
 const getIndexCacheKey = (doc: any) =>
   `${doc.id}:${doc.searchIndexVersion || doc.fileUrl || 'legacy'}`;
 
@@ -88,11 +97,14 @@ export default function SearchResultsPage() {
   const navigate = useNavigate();
   const query = searchParams.get('q') || '';
   
-  const { documents, fetchDocuments, isLoadingDocs, searchQuery, setSearchQuery } = useStore();
+  const { documents, fetchDocuments, hasLoadedDocs, isLoadingDocs, searchQuery, setSearchQuery, role } = useStore();
   const [results, setResults] = useState<GlobalSearchResult[]>([]);
+  const [resolvedQuery, setResolvedQuery] = useState(query);
   const [isSearching, setIsSearching] = useState(false);
   const [indexingProgress, setIndexingProgress] = useState({ current: 0, total: 0 });
-  const requestedFirebaseRefreshRef = useRef(false);
+  const [usesCatalogFallback, setUsesCatalogFallback] = useState(false);
+  const [resultPage, setResultPage] = useState(1);
+  const searchRunRef = useRef(0);
 
   // Keep local input state synchronized with query param
   const [inputValue, setInputValue] = useState(query);
@@ -100,19 +112,14 @@ export default function SearchResultsPage() {
   useEffect(() => {
     setInputValue(query);
     setSearchQuery(query); // Sync global search query state
+    setResultPage(1);
   }, [query, setSearchQuery]);
 
   useEffect(() => {
-    if (isLoadingDocs) return;
-    if (isFirebaseSite && !requestedFirebaseRefreshRef.current) {
-      requestedFirebaseRefreshRef.current = true;
-      fetchDocuments();
-      return;
-    }
-    if (documents && documents.length === 0) {
+    if (!isFirebaseSite && !hasLoadedDocs && !isLoadingDocs && documents.length === 0) {
       fetchDocuments();
     }
-  }, [documents, isLoadingDocs, fetchDocuments]);
+  }, [documents.length, hasLoadedDocs, isLoadingDocs, fetchDocuments]);
 
   const normalizeText = (value: string) => {
     return value
@@ -260,13 +267,40 @@ export default function SearchResultsPage() {
   };
 
   const performSearch = useCallback(async () => {
+    const searchRun = ++searchRunRef.current;
+    const isStale = () => searchRun !== searchRunRef.current;
     const normalizedQuery = normalizeText(query);
-    if (!normalizedQuery || documents.length === 0) {
+    const searchableDocuments = documents.filter((document) => canViewDistributorDocument(document, role));
+    const searchableDocumentIds = new Set(searchableDocuments.map((document) => document.id));
+    if (!normalizedQuery || searchableDocuments.length === 0) {
       setResults([]);
+      setResolvedQuery(query);
+      setIsSearching(false);
       return;
     }
 
+    const vocabulary = buildCatalogVocabulary(searchableDocuments.flatMap((document) => [
+      { text: document.title || '', weight: 20 },
+      { text: document.description || '', weight: 6 },
+      { text: document.category || '', weight: 12 },
+      { text: (document.tags || []).join(' '), weight: 12 },
+    ]));
+    const resolution = resolveCatalogQueryTokens(normalizedQuery.split(/\s+/), vocabulary);
+    const correctedQuery = normalizeText(applyCatalogSpellingCorrections(query, resolution.corrections));
+    const effectiveQuery = correctedQuery || normalizedQuery;
+    const queryTokens = effectiveQuery.split(/\s+/).filter(Boolean);
+    const findMatch = (text: string) => {
+      const exact = text.indexOf(effectiveQuery);
+      if (exact >= 0) return exact;
+      if (queryTokens.length > 1 && queryTokens.every((token) => text.includes(token))) {
+        return Math.min(...queryTokens.map((token) => text.indexOf(token)).filter((index) => index >= 0));
+      }
+      return -1;
+    };
+    setResolvedQuery(resolution.corrections.length > 0 ? effectiveQuery : query);
+
     setIsSearching(true);
+    setUsesCatalogFallback(false);
     const searchResults: GlobalSearchResult[] = [];
 
     if (!isStaticSite && !isFirebaseSite) {
@@ -280,9 +314,13 @@ export default function SearchResultsPage() {
 
         if (response.ok) {
           const data = await response.json();
+          if (isStale()) return;
           if (Array.isArray(data.results)) {
             setIndexingProgress({ current: data.totalPdf || 0, total: data.totalPdf || 0 });
-            setResults(data.results as GlobalSearchResult[]);
+            setResults(rankCatalogSearchResults(
+              (data.results as GlobalSearchResult[])
+                .filter((result) => searchableDocumentIds.has(result.catalogId)),
+            ));
             setIsSearching(false);
             return;
           }
@@ -293,12 +331,12 @@ export default function SearchResultsPage() {
     }
 
     // 1. Initial Quick Search (Title/Description)
-    documents.forEach(doc => {
+    searchableDocuments.forEach(doc => {
       const normTitle = normalizeText(doc.title);
       const normDesc = normalizeText(doc.description || '');
       const normMetadata = getDocumentSearchText(doc);
 
-      if (normTitle.includes(normalizedQuery)) {
+      if (findMatch(normTitle) >= 0) {
         searchResults.push({
           catalogId: doc.id,
           title: doc.title,
@@ -310,7 +348,7 @@ export default function SearchResultsPage() {
           matchText: query,
           source: 'catalog-title'
         });
-      } else if (normDesc.includes(normalizedQuery)) {
+      } else if (findMatch(normDesc) >= 0) {
         searchResults.push({
           catalogId: doc.id,
           title: doc.title,
@@ -322,7 +360,7 @@ export default function SearchResultsPage() {
           matchText: query,
           source: 'catalog-description'
         });
-      } else if (normMetadata.includes(normalizedQuery)) {
+      } else if (findMatch(normMetadata) >= 0) {
         searchResults.push({
           catalogId: doc.id,
           title: doc.title,
@@ -337,7 +375,7 @@ export default function SearchResultsPage() {
       }
     });
 
-    const pdfDocs = documents.filter(doc => detectViewerSource(doc.fileUrl || '').type === 'pdf-url');
+    const pdfDocs = searchableDocuments.filter(doc => detectViewerSource(doc.fileUrl || '').type === 'pdf-url');
     const totalPdf = pdfDocs.length;
     setIndexingProgress({ current: 0, total: totalPdf });
 
@@ -366,12 +404,13 @@ export default function SearchResultsPage() {
       }
       return { doc, index: null };
     }));
+    if (isStale()) return;
 
     // Process cached matches immediately
     cachedIndexes.forEach(({ doc, index }) => {
       if (index) {
         for (const page of index.pages) {
-          const matchIdx = page.normalizedText.indexOf(normalizedQuery);
+          const matchIdx = findMatch(page.normalizedText);
           if (matchIdx !== -1) {
             searchResults.push({
               catalogId: doc.id,
@@ -380,8 +419,8 @@ export default function SearchResultsPage() {
               coverUrl: doc.coverUrl,
               totalPages: index.totalPages,
               pageNumber: page.pageNumber,
-              snippet: createSnippet(page.text, page.normalizedText, normalizedQuery, matchIdx),
-              matchText: query,
+              snippet: createSnippet(page.text, page.normalizedText, effectiveQuery, matchIdx),
+              matchText: effectiveQuery,
               source: 'pdf-content'
             });
           }
@@ -389,11 +428,45 @@ export default function SearchResultsPage() {
       }
     });
 
-    setResults([...searchResults].sort((a, b) => {
-      if (a.source !== 'pdf-content' && b.source === 'pdf-content') return -1;
-      if (a.source === 'pdf-content' && b.source !== 'pdf-content') return 1;
-      return (a.pageNumber || 0) - (b.pageNumber || 0);
-    }));
+    setResults(rankCatalogSearchResults(searchResults));
+
+    if (isFirebaseSite) {
+      try {
+        const { searchFirebaseCatalogPages } = await import('../lib/firebaseCatalog');
+        const matchingPages = await searchFirebaseCatalogPages(queryTokens);
+        if (isStale()) return;
+        const documentsById = new Map(searchableDocuments.map((document) => [document.id, document]));
+        for (const page of matchingPages) {
+          const doc = documentsById.get(page.catalogId);
+          const usesStaticIndex = doc?.fileUrl?.startsWith('/storage/');
+          if (!doc || (!usesStaticIndex && doc.searchIndexVersion && page.version !== doc.searchIndexVersion)) continue;
+          const normalizedPageText = normalizeText(page.text);
+          const matchIdx = findMatch(normalizedPageText);
+          if (matchIdx < 0) continue;
+          searchResults.push({
+            catalogId: doc.id,
+            title: doc.title,
+            description: doc.description,
+            coverUrl: doc.coverUrl,
+            totalPages: doc.pageCount,
+            pageNumber: page.pageNumber,
+            snippet: createSnippet(page.text, normalizedPageText, effectiveQuery, matchIdx),
+            matchText: effectiveQuery,
+            source: 'pdf-content',
+          });
+        }
+        setIndexingProgress({ current: searchableDocuments.length, total: searchableDocuments.length });
+        setResults(rankCatalogSearchResults(searchResults));
+        setIsSearching(false);
+        return;
+      } catch (error) {
+        if (isStale()) return;
+        // Older deployments without the global index keep the proven per-PDF
+        // path as a compatibility fallback while an administrator backfills it.
+        console.warn('[Search] Global index unavailable, using catalogue indexes.', error);
+        setUsesCatalogFallback(true);
+      }
+    }
 
     // 3. Fallback: On-the-fly Indexing for missing ones
     const missingDocs = cachedIndexes.filter(it => !it.index).map(it => it.doc);
@@ -405,12 +478,13 @@ export default function SearchResultsPage() {
       for (let start = 0; start < missingDocs.length; start += 3) {
         await Promise.all(missingDocs.slice(start, start + 3).map(async (doc) => {
         const index = await indexPdf(doc);
+        if (isStale()) return;
         completedIndexes += 1;
         setIndexingProgress({ current: completedIndexes, total: totalPdf });
         if (index) {
           let foundNewMatches = false;
           for (const page of index.pages) {
-            const matchIdx = page.normalizedText.indexOf(normalizedQuery);
+            const matchIdx = findMatch(page.normalizedText);
             if (matchIdx !== -1) {
               searchResults.push({
                 catalogId: doc.id,
@@ -419,8 +493,8 @@ export default function SearchResultsPage() {
                 coverUrl: doc.coverUrl,
                 totalPages: index.totalPages,
                 pageNumber: page.pageNumber,
-                snippet: createSnippet(page.text, page.normalizedText, normalizedQuery, matchIdx),
-                matchText: query,
+                snippet: createSnippet(page.text, page.normalizedText, effectiveQuery, matchIdx),
+                matchText: effectiveQuery,
                 source: 'pdf-content'
               });
               foundNewMatches = true;
@@ -428,26 +502,18 @@ export default function SearchResultsPage() {
           }
 
           if (foundNewMatches) {
-            setResults([...searchResults].sort((a, b) => {
-              if (a.source !== 'pdf-content' && b.source === 'pdf-content') return -1;
-              if (a.source === 'pdf-content' && b.source !== 'pdf-content') return 1;
-              return (a.pageNumber || 0) - (b.pageNumber || 0);
-            }));
+            setResults(rankCatalogSearchResults(searchResults));
           }
         }
         }));
+        if (isStale()) return;
       }
     }
 
-    searchResults.sort((a, b) => {
-      if (a.source !== 'pdf-content' && b.source === 'pdf-content') return -1;
-      if (a.source === 'pdf-content' && b.source !== 'pdf-content') return 1;
-      return (a.pageNumber || 0) - (b.pageNumber || 0);
-    });
-
-    setResults(searchResults);
+    if (isStale()) return;
+    setResults(rankCatalogSearchResults(searchResults));
     setIsSearching(false);
-  }, [query, documents]);
+  }, [query, documents, role]);
 
   useEffect(() => {
     if (documents && documents.length > 0) {
@@ -467,6 +533,23 @@ export default function SearchResultsPage() {
     setSearchQuery('');
     setSearchParams({});
     setResults([]);
+    setResultPage(1);
+  };
+
+  const totalResultPages = Math.max(1, Math.ceil(results.length / RESULTS_PER_PAGE));
+  const visibleResultPage = Math.min(resultPage, totalResultPages);
+  const visibleResults = useMemo(() => {
+    const start = (visibleResultPage - 1) * RESULTS_PER_PAGE;
+    return results.slice(start, start + RESULTS_PER_PAGE);
+  }, [results, visibleResultPage]);
+  const visibleResultStart = results.length
+    ? (visibleResultPage - 1) * RESULTS_PER_PAGE + 1
+    : 0;
+  const visibleResultEnd = Math.min(visibleResultPage * RESULTS_PER_PAGE, results.length);
+
+  const changeResultPage = (nextPage: number) => {
+    setResultPage(Math.max(1, Math.min(totalResultPages, nextPage)));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -488,6 +571,11 @@ export default function SearchResultsPage() {
             <span>•</span>
             <span>Total de catálogos buscados</span>
           </div>
+          {resolvedQuery && normalizeText(resolvedQuery) !== normalizeText(query) && (
+            <p className="ml-9 mt-2 text-sm text-[#0055b8]">
+              Interpretando la búsqueda como “{resolvedQuery}”.
+            </p>
+          )}
         </header>
 
         {/* Search Bar matching the reference image */}
@@ -529,7 +617,9 @@ export default function SearchResultsPage() {
             <div>
               <p className="text-lg font-medium">Buscando...</p>
               <p className="text-sm text-[#111]/50 mt-1">
-                Indexando catálogos: {indexingProgress.current} de {indexingProgress.total}
+                {usesCatalogFallback
+                  ? `Recuperando índices: ${indexingProgress.current} de ${indexingProgress.total}`
+                  : 'Consultando el índice actualizado…'}
               </p>
             </div>
           </div>
@@ -545,11 +635,19 @@ export default function SearchResultsPage() {
         {/* Results List */}
         {!isSearching && results.length > 0 && (
           <div className="flex flex-col border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-200 bg-white shadow-sm mb-8">
-            {results.map((result, idx) => (
-              <div 
+            {visibleResults.map((result, idx) => (
+              <button
+                type="button"
                 key={`${result.catalogId}-${result.pageNumber}-${idx}`}
-                className="flex flex-col sm:flex-row gap-6 p-6 hover:bg-gray-50 transition-colors cursor-pointer group"
-                onClick={() => navigate(`/viewer/${result.catalogId}?page=${result.pageNumber || 1}&search=${encodeURIComponent(query)}`)}
+                className="flex w-full flex-col sm:flex-row gap-6 p-6 hover:bg-gray-50 transition-colors cursor-pointer group text-left active:scale-[0.995]"
+                onClick={() => navigate(createCatalogViewerHref({
+                  catalogId: result.catalogId,
+                  pageNumber: result.pageNumber,
+                  search: resolvedQuery || query,
+                }))}
+                aria-label={result.source === 'pdf-content'
+                  ? `Abrir ${result.title}, página ${result.pageNumber}`
+                  : `Abrir catálogo ${result.title}`}
               >
                 <div className="w-full sm:w-48 h-32 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 flex items-center justify-center">
                   <img src={result.coverUrl || '/placeholder.jpg'} alt={result.title} className="w-full h-full object-contain" />
@@ -562,37 +660,55 @@ export default function SearchResultsPage() {
                   <p className="text-sm text-gray-500 mb-3">{result.title}</p>
                   
                   <p className="text-gray-700 leading-relaxed max-w-3xl">
-                    <HighlightedText text={result.snippet} highlight={query} />
+                    <HighlightedText text={result.snippet} highlight={resolvedQuery || query} />
                   </p>
                   
                   <div className="mt-4 flex gap-2">
                     <span className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded-lg font-medium">
-                      Resultados
+                      {result.source === 'pdf-content'
+                        ? `Abrir página ${result.pageNumber}`
+                        : 'Abrir catálogo'}
                     </span>
                   </div>
                 </div>
 
                 <div className="hidden sm:flex items-center justify-center">
                   <div className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-300 text-gray-500 group-hover:border-black group-hover:text-black transition-colors">
-                    <ArrowRight className="w-5 h-5" />
+                    <ArrowRight className="w-5 h-5" aria-hidden="true" />
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
             
             {/* Footer Pagination */}
             <div className="p-4 bg-gray-50 flex items-center justify-between text-sm text-gray-600">
               <div>
-                1-{results.length} de {results.length} resultados
+                {visibleResultStart}-{visibleResultEnd} de {results.length} resultados
               </div>
               <div className="flex gap-2">
-                <button className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50">
+                <button
+                  type="button"
+                  onClick={() => changeResultPage(visibleResultPage - 1)}
+                  disabled={visibleResultPage <= 1}
+                  aria-label="Página anterior de resultados"
+                  className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50"
+                >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <button className="w-8 h-8 flex items-center justify-center rounded border border-black bg-black text-white font-medium">
-                  1
+                <button
+                  type="button"
+                  aria-current="page"
+                  className="min-w-8 h-8 px-2 flex items-center justify-center rounded border border-black bg-black text-white font-medium"
+                >
+                  {visibleResultPage} / {totalResultPages}
                 </button>
-                <button className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50" disabled>
+                <button
+                  type="button"
+                  onClick={() => changeResultPage(visibleResultPage + 1)}
+                  disabled={visibleResultPage >= totalResultPages}
+                  aria-label="Página siguiente de resultados"
+                  className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50"
+                >
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

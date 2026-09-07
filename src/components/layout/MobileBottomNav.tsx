@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Info, List } from 'lucide-react';
+import { Home, Info } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function MobileBottomNav() {
@@ -14,14 +14,6 @@ export default function MobileBottomNav() {
       >
         <Home size={24} />
         <span>Inicio</span>
-      </button>
-
-      <button
-        className={`mobile-nav-item ${location.pathname === '/catalogos' ? 'active' : ''}`}
-        onClick={() => navigate('/catalogos')}
-      >
-        <List size={24} />
-        <span>Catálogos</span>
       </button>
 
       <button

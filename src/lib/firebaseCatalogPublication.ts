@@ -3,6 +3,7 @@ import type { PreparedPdfCatalog } from './catalogSearchIndex';
 import { preparePdfCatalog } from './catalogSearchIndex';
 import {
   cleanupPdfSearchIndex,
+  deleteDriveFilesReliably,
   deleteFileFromDrive,
   discardPdfSearchIndexVersion,
   discardPdfVersion,
@@ -28,16 +29,19 @@ export async function publishPreparedFirebasePdf(
   let documentSaved = false;
 
   try {
-    onProgress?.('Guardando índice de búsqueda', 0);
-    await uploadPdfSearchIndex(id, prepared.pages, searchIndexVersion, (progress) => {
-      onProgress?.('Guardando índice de búsqueda', progress);
-    });
-
-    onProgress?.('Guardando PDF para el visor integrado', 0);
-    const storage = await uploadPdfToFirestore(id, prepared.viewerFile, (progress) => {
-      onProgress?.('Guardando PDF para el visor integrado', progress);
-    });
-    storageVersion = storage.version;
+    onProgress?.('Guardando PDF e índice en paralelo', 0);
+    const [searchResult, storageResult] = await Promise.allSettled([
+      uploadPdfSearchIndex(id, prepared.pages, searchIndexVersion, (progress) => {
+        onProgress?.('Guardando índice de búsqueda', progress);
+      }),
+      uploadPdfToFirestore(id, prepared.viewerFile, (progress) => {
+        onProgress?.('Guardando PDF para el visor integrado', progress);
+      }),
+    ]);
+    if (storageResult.status === 'fulfilled') storageVersion = storageResult.value.version;
+    if (searchResult.status === 'rejected') throw searchResult.reason;
+    if (storageResult.status === 'rejected') throw storageResult.reason;
+    const storage = storageResult.value;
 
     await saveFirebaseDocument(id, {
       ...document,
@@ -120,7 +124,7 @@ export async function repairFirebaseDocumentFromDrive(
       onProgress,
     );
     if (document.coverFileId && document.coverFileId !== cover?.fileId) {
-      await deleteFileFromDrive(document.coverFileId).catch(() => undefined);
+      await deleteDriveFilesReliably(document.id, [document.coverFileId]);
     }
     onProgress?.('Catálogo reparado y verificado', 100);
     return publication;

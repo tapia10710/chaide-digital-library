@@ -8,6 +8,7 @@ import { catalogCategories, normalizeCatalogText } from '../../lib/catalogCatego
 import { useStore } from '../../store/useStore';
 import { getCategoryIconComponent } from '../../lib/categoryIconRegistry';
 import { prefetchPdfDocument } from '../../lib/pdfPrefetch';
+import { orderPublicCategories, splitCategoryMenuLabel } from '../../lib/categoryStructure';
 
 interface EditorialHeroProps {
   doc: DocumentDef;
@@ -117,13 +118,13 @@ export default function EditorialHero({ doc }: EditorialHeroProps) {
   const titleLines = splitHeroTitle(displayTitle);
   const categoryLabel = getHeroCategoryLabel(doc, categories);
   const heroCategories = useMemo(() => {
-    const editableCategories = [...categories]
-      .filter((category) => category.active !== false)
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    const editableCategories = orderPublicCategories(
+      categories.filter((category) => category.active !== false),
+    );
 
     if (editableCategories.length > 0) return editableCategories;
 
-    return catalogCategories.map((category) => ({
+    return orderPublicCategories(catalogCategories.map((category) => ({
       id: `catalog-${category.slug}`,
       name: category.label,
       slug: category.slug,
@@ -131,7 +132,7 @@ export default function EditorialHero({ doc }: EditorialHeroProps) {
       icon: category.icon,
       order: category.order,
       active: true,
-    }));
+    })));
   }, [categories]);
   const year = displayTitle.match(/\b(20\d{2})\b/)?.[1];
   const pageCountLabel = doc.pageCount ? `${doc.pageCount} paginas` : '';
@@ -239,6 +240,7 @@ export default function EditorialHero({ doc }: EditorialHeroProps) {
         <nav
           className="editorial-category-rail"
           aria-label="Categorias destacadas"
+          style={{ '--hero-category-count': Math.max(1, heroCategories.length) } as React.CSSProperties}
           onPointerDown={handleCategoryRailPointerDown}
           onPointerMove={handleCategoryRailPointerMove}
           onPointerUp={finishCategoryRailDrag}
@@ -248,6 +250,7 @@ export default function EditorialHero({ doc }: EditorialHeroProps) {
           {heroCategories.map((category) => {
             const Icon = getCategoryIconComponent(category.icon || 'Tag');
             const iconImage = category.imageUrl;
+            const labelLines = splitCategoryMenuLabel(category.name);
             return (
               <button
                 key={category.id || category.slug}
@@ -262,7 +265,10 @@ export default function EditorialHero({ doc }: EditorialHeroProps) {
                 type="button"
               >
                 {iconImage ? <img src={iconImage} alt="" /> : <Icon />}
-                <span>{category.name}</span>
+                <span className="category-menu-label">
+                  <span>{labelLines[0]}</span>
+                  <span>{labelLines[1]}</span>
+                </span>
               </button>
             );
           })}

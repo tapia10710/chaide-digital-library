@@ -85,6 +85,11 @@ export interface Category {
   updatedAt?: string;
 }
 
+export interface CategoryRemovalResult {
+  fallbackCategory: Category;
+  reassignedDocuments: number;
+}
+
 export interface PromotionalBannerConfig {
   imageUrl: string;
   /** Separate portrait image for mobile (~9:10, recommended 1700 x 1900). */
@@ -120,7 +125,7 @@ interface AppState {
   fetchCategories: (isAdmin?: boolean) => Promise<void>;
   addCategory: (cat: Category) => void;
   updateCategory: (id: string, cat: Category) => Promise<void>;
-  removeCategory: (id: string) => Promise<void>;
+  removeCategory: (id: string) => Promise<CategoryRemovalResult>;
 
   // Promotional banner
   promotionalBanner: PromotionalBannerConfig | null;
@@ -133,7 +138,10 @@ interface AppState {
   documents: DocumentDef[];
   isLoadingDocs: boolean;
   hasLoadedDocs: boolean;
+  documentsSyncStatus: 'idle' | 'syncing' | 'live' | 'error';
   fetchDocuments: (isAdmin?: boolean) => Promise<void>;
+  syncDocuments: (documents: DocumentDef[]) => void;
+  setDocumentsSyncStatus: (status: AppState['documentsSyncStatus']) => void;
   addDocument: (doc: DocumentDef) => void;
   updateDocument: (id: string, formData: FormData) => Promise<void>;
   removeDocument: (id: string) => Promise<void>;
@@ -158,6 +166,7 @@ export const useStore = create<AppState>((set, get) => ({
       categories: current.categories.filter((category) => category.active !== false),
       isLoadingDocs: false,
       hasLoadedDocs: false,
+      documentsSyncStatus: 'syncing',
     });
   },
   logout: () => {
@@ -174,6 +183,7 @@ export const useStore = create<AppState>((set, get) => ({
       categories: current.categories.filter((category) => category.active !== false),
       isLoadingDocs: false,
       hasLoadedDocs: false,
+      documentsSyncStatus: 'syncing',
     });
   },
   
@@ -260,17 +270,51 @@ export const useStore = create<AppState>((set, get) => ({
     if (isStaticSite) throw staticWriteError();
     if (isFirebaseSite) {
       const { deleteFirebaseCategory } = await import('../lib/firebaseCatalog');
-      await deleteFirebaseCategory(id);
-      set((state) => ({ categories: state.categories.filter((item) => item.id !== id) }));
-      return;
+      const result = await deleteFirebaseCategory(id);
+      const reassignedIds = new Set(result.reassignedDocumentIds);
+      set((state) => ({
+        categories: [
+          ...state.categories.filter((item) => (
+            item.id !== id && item.id !== result.fallbackCategory.id
+          )),
+          result.fallbackCategory,
+        ],
+        documents: state.documents.map((item) => reassignedIds.has(item.id)
+          ? { ...item, category: result.fallbackCategory.name }
+          : item),
+      }));
+      return {
+        fallbackCategory: result.fallbackCategory,
+        reassignedDocuments: result.reassignedDocumentIds.length,
+      };
     }
     try {
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        set((state) => ({ categories: state.categories.filter(c => c.id !== id) }));
+        const result = await res.json();
+        const fallbackCategory = result.fallbackCategory as Category;
+        const reassignedIds = new Set<string>(result.reassignedDocumentIds || []);
+        set((state) => ({
+          categories: [
+            ...state.categories.filter((category) => (
+              category.id !== id && category.id !== fallbackCategory.id
+            )),
+            fallbackCategory,
+          ],
+          documents: state.documents.map((item) => reassignedIds.has(item.id)
+            ? { ...item, category: fallbackCategory.name }
+            : item),
+        }));
+        return {
+          fallbackCategory,
+          reassignedDocuments: reassignedIds.size,
+        };
       }
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'No se pudo eliminar la categoría.');
     } catch (e) {
       console.error(e);
+      throw e;
     }
   },
 
@@ -344,6 +388,7 @@ export const useStore = create<AppState>((set, get) => ({
   documents: [], // Loaded from API
   isLoadingDocs: false,
   hasLoadedDocs: false,
+  documentsSyncStatus: 'idle',
   fetchDocuments: async (isAdmin = false, retries = 3) => {
     if (get().isLoadingDocs) {
       if (!isAdmin) return;
@@ -356,7 +401,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (get().isLoadingDocs) return;
     }
     const requestSequence = ++documentsRequestSequence;
-    set({ isLoadingDocs: true });
+    set({ isLoadingDocs: true, documentsSyncStatus: 'syncing' });
     
     const apiUrl = isStaticSite || isFirebaseSite
       ? staticDataUrl('documents.json')
@@ -372,6 +417,7 @@ export const useStore = create<AppState>((set, get) => ({
               documents: firebaseDocuments.map(normalizePublicDocument),
               isLoadingDocs: false,
               hasLoadedDocs: true,
+              documentsSyncStatus: 'live',
             });
             return;
           }
@@ -408,6 +454,7 @@ export const useStore = create<AppState>((set, get) => ({
           if (i === retries - 1) {
             if (requestSequence === documentsRequestSequence) {
               set({ isLoadingDocs: false, hasLoadedDocs: true });
+              set({ documentsSyncStatus: 'error' });
             }
           } else {
             await new Promise(resolve => setTimeout(resolve, 1500 * (i + 1)));
@@ -415,8 +462,20 @@ export const useStore = create<AppState>((set, get) => ({
         }
     }
   },
+  syncDocuments: (documents) => set({
+    documents: documents.map(normalizePublicDocument),
+    isLoadingDocs: false,
+    hasLoadedDocs: true,
+    documentsSyncStatus: 'live',
+  }),
+  setDocumentsSyncStatus: (documentsSyncStatus) => set({ documentsSyncStatus }),
   
-  addDocument: (doc) => set((state) => ({ documents: [doc, ...state.documents] })),
+  addDocument: (doc) => set((state) => ({
+    // Firestore refreshes and optimistic publication can finish almost at the
+    // same time. Keep one in-memory row per id so replacement selects never
+    // show the same catalogue twice even though Firestore itself is unique.
+    documents: [doc, ...state.documents.filter((item) => item.id !== doc.id)],
+  })),
   
   updateDocument: async (id, formData) => {
     if (isStaticSite) throw staticWriteError();

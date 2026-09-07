@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { detectViewerSource, normalizeFlippingBookEmbed, getPdfProxyUrl } from '../../lib/viewerUtils';
 import ProfessionalFlipbook from './ProfessionalFlipbook';
+import { downloadPdfFromUserGesture } from '../../lib/pdfDownload';
 
 interface PdfViewerProps {
   documentId: string;
@@ -10,12 +11,13 @@ interface PdfViewerProps {
   downloadUrl?: string;
   initialPage?: number;
   initialSearch?: string;
+  onPageChange?: (page: number) => void;
 }
 
-export default function PdfViewer({ documentId, url, title, onClose, downloadUrl, initialPage, initialSearch }: PdfViewerProps) {
+export default function PdfViewer({ documentId, url, title, onClose, downloadUrl, initialPage, initialSearch, onPageChange }: PdfViewerProps) {
   const source = useMemo(() => detectViewerSource(url), [url]);
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     const finalDownloadUrl = downloadUrl || (source.type === 'pdf-url' ? source.value : null);
     
     if (!finalDownloadUrl) {
@@ -24,23 +26,10 @@ export default function PdfViewer({ documentId, url, title, onClose, downloadUrl
     }
 
     try {
-      const proxiedUrl = getPdfProxyUrl(finalDownloadUrl);
-      const response = await fetch(proxiedUrl);
-      if (!response.ok) throw new Error('Fetch failed');
-      
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = `${title.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_')}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
+      downloadPdfFromUserGesture(finalDownloadUrl, title);
     } catch (e) {
       console.error('Download failed:', e);
-      window.open(finalDownloadUrl, '_blank', 'noopener,noreferrer');
+      alert(e instanceof Error ? e.message : 'No se pudo descargar el PDF.');
     }
   };
 
@@ -56,6 +45,7 @@ export default function PdfViewer({ documentId, url, title, onClose, downloadUrl
         downloadUrl={downloadUrl} 
         initialPage={initialPage}
         initialSearch={initialSearch}
+        onPageChange={onPageChange}
       />
     );
   }

@@ -1,19 +1,22 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import PdfViewer from '../components/preview/PdfViewer';
 import type { DocumentDef } from '../lib/mockData';
 import { isFirebaseSite } from '../lib/runtimeConfig';
+import DistributorAccessGate from '../components/access/DistributorAccessGate';
+import { hasDistributorAccess, isDistributorDocument } from '../lib/distributorAccess';
 
 export default function ViewerPage() {
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const requestedPage = Number.parseInt(searchParams.get('page') || '1', 10);
   const initialPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const initialSearch = searchParams.get('search') || '';
-  const { documents, fetchDocuments, isLoadingDocs, hasLoadedDocs } = useStore();
+  const { documents, fetchDocuments, isLoadingDocs, hasLoadedDocs, role } = useStore();
+  const [distributorAccessRevision, setDistributorAccessRevision] = useState(0);
   const [directDocument, setDirectDocument] = useState<DocumentDef | null>(null);
   const [directDocumentResolved, setDirectDocumentResolved] = useState(!isFirebaseSite);
   const doc = useMemo(
@@ -23,6 +26,16 @@ export default function ViewerPage() {
   const [firebasePdfUrl, setFirebasePdfUrl] = useState('');
   const [firebasePdfError, setFirebasePdfError] = useState('');
   const [firebasePdfProgress, setFirebasePdfProgress] = useState(0);
+
+  const handlePageChange = useCallback((page: number) => {
+    const value = String(Math.max(1, Math.trunc(page)));
+    setSearchParams((current) => {
+      if (current.get('page') === value) return current;
+      const next = new URLSearchParams(current);
+      next.set('page', value);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   useEffect(() => {
     if (!hasLoadedDocs && !isLoadingDocs) {
@@ -49,6 +62,12 @@ export default function ViewerPage() {
 
   useEffect(() => {
     const sourceUrl = doc?.fileUrl || '';
+    if (isDistributorDocument(doc) && role !== 'admin' && !hasDistributorAccess()) {
+      setFirebasePdfUrl('');
+      setFirebasePdfError('');
+      setFirebasePdfProgress(0);
+      return;
+    }
     if (!sourceUrl.startsWith('firestore-pdf://')) {
       setFirebasePdfUrl('');
       setFirebasePdfError('');
@@ -108,7 +127,7 @@ export default function ViewerPage() {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [doc?.externalUrl, doc?.fileUrl]);
+  }, [doc?.category, doc?.externalUrl, doc?.fileUrl, distributorAccessRevision, role]);
 
   if (!doc && ((!hasLoadedDocs || isLoadingDocs) || !directDocumentResolved)) {
     return (
@@ -130,6 +149,14 @@ export default function ViewerPage() {
           </button>
         </div>
      );
+  }
+
+  if (isDistributorDocument(doc) && role !== 'admin' && !hasDistributorAccess()) {
+    return (
+      <DistributorAccessGate onGranted={() => setDistributorAccessRevision((value) => value + 1)}>
+        <></>
+      </DistributorAccessGate>
+    );
   }
 
   if (doc.fileUrl?.startsWith('firestore-pdf://') && !firebasePdfUrl && !firebasePdfError) {
@@ -176,6 +203,7 @@ export default function ViewerPage() {
           downloadUrl={downloadUrl}
           initialPage={initialPage}
           initialSearch={initialSearch}
+          onPageChange={handlePageChange}
        />
     </div>
   );

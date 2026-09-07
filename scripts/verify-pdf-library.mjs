@@ -22,6 +22,28 @@ const normalizeSearch = (value) => String(value || '')
   .replace(/\s+/g, ' ')
   .trim();
 
+async function fetchWithTransientRetry(url, init = {}, attempts = 3) {
+  let lastResponse;
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(20_000),
+      });
+      lastResponse = response;
+      if (response.ok || ![408, 429, 500, 502, 503, 504].includes(response.status)) return response;
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+  if (lastResponse) return lastResponse;
+  throw lastError || new Error('La solicitud de verificación no respondió.');
+}
+
 async function verifyPdfBytes(document, bytes) {
   let pdf;
   try {
@@ -160,7 +182,7 @@ await Promise.all(documents.map(async (document) => {
   if (!/^https?:\/\//i.test(pdfUrl)) return;
 
   try {
-    const response = await fetch(pdfUrl, { headers: { Range: 'bytes=0-65535' } });
+    const response = await fetchWithTransientRetry(pdfUrl, { headers: { Range: 'bytes=0-65535' } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     if (source.startsWith('/') && response.status !== 206) {
       throw new Error(`se esperaba HTTP 206 y se recibió ${response.status}`);

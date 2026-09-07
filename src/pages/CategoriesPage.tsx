@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { getCategoryIconComponent } from '../lib/categoryIconRegistry';
+import { orderPublicCategories } from '../lib/categoryStructure';
 
 export default function CategoriesPage() {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ export default function CategoriesPage() {
         </header>
 
         <section className="category-catalog-grid">
-          {categories.filter((category) => category.active !== false).map((category) => {
+          {orderPublicCategories(categories.filter((category) => category.active !== false)).map((category) => {
             const Icon = getCategoryIconComponent(category.icon);
             
             return (

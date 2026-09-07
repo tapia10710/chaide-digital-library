@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link as LinkIcon, FileJson, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { FALLBACK_CATEGORY_NAME, findFallbackCategory } from '../../lib/categoryStructure';
 
 interface PendingImport {
   id: string;
@@ -26,7 +27,7 @@ export default function AdminLinkImport() {
       url: urlInput,
       type: importType,
       title: importType === 'url' ? 'Documento desde URL' : 'Documento Embebido',
-      category: categories[0]?.name || 'Sin categoría',
+      category: findFallbackCategory(categories)?.name || FALLBACK_CATEGORY_NAME,
       status: 'pending'
     }]);
     

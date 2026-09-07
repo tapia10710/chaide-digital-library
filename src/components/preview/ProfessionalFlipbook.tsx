@@ -29,6 +29,12 @@ import { getCachedPdfData, setCachedPdfData } from '../../lib/backgroundIndexer'
 import { loadPersistedCatalogSearchIndex } from '../../lib/catalogSearchIndex';
 import { buildIndexFromPdfDocument } from '../../lib/pdfIndexerService';
 import {
+  applyCatalogSpellingCorrections,
+  buildCatalogVocabulary,
+  catalogTypoDistance,
+  resolveCatalogQueryTokens,
+} from '../../lib/catalogAssistantSpelling';
+import {
   loadDocument,
   getCachedDocument,
   getRenderedBitmap,
@@ -46,6 +52,7 @@ import {
 } from '../../lib/pdfLoadGuard';
 import CatalogPreviewCard from '../library/CatalogPreviewCard';
 import CatalogViewerDetails from './CatalogViewerDetails';
+import { downloadPdfFromUserGesture } from '../../lib/pdfDownload';
 
 // ... (previous imports and Page component remain same)
 
@@ -92,6 +99,7 @@ interface ProfessionalFlipbookProps {
   downloadUrl?: string;
   initialPage?: number;
   initialSearch?: string;
+  onPageChange?: (page: number) => void;
 }
 
 const SEARCH_FOCUS_ZOOM = 1.25;
@@ -855,7 +863,7 @@ const LazyPdfPageThumbnail = ({ pdf, pageNumber, cache, onThumbnailRendered }: T
   );
 };
 
-export default function ProfessionalFlipbook({ documentId, url, title, onClose, downloadUrl, initialPage, initialSearch }: ProfessionalFlipbookProps) {
+export default function ProfessionalFlipbook({ documentId, url, title, onClose, downloadUrl, initialPage, initialSearch, onPageChange }: ProfessionalFlipbookProps) {
   const navigate = useNavigate();
   const { documents } = useStore();
   const currentDoc = useMemo(() => {
@@ -909,7 +917,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const documentRecoveryTimerRef = useRef<number | null>(null);
   const documentRecoveryCycleRef = useRef(0);
   const navigationLockedRef = useRef(false);
-  const initialProcessedRef = useRef(false);
+  const initialTargetRef = useRef('');
+  const lastReportedPageRef = useRef<number | null>(null);
   const isSwipingRef = useRef(false);
   const isPanningRef = useRef(false);
   const startPanRef = useRef({ x: 0, y: 0 });
@@ -1237,7 +1246,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         window.clearTimeout(navigationRetryTimerRef.current);
         navigationRetryTimerRef.current = null;
       }
-      initialProcessedRef.current = false;
+      initialTargetRef.current = '';
       setCurrentPage(0);
       setRenderFocusPage(null);
       setPageInput('1');
@@ -1499,29 +1508,31 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
 
   // Handle initial page and search from props
   useEffect(() => {
-    if (readyToRender && pdf && !initialProcessedRef.current) {
-      initialProcessedRef.current = true;
-      const timers: number[] = [];
-      
-      // Go to initial page
-      if (initialPage && initialPage > 1) {
-        timers.push(window.setTimeout(() => {
-          goToPage(initialPage);
-        }, 300));
-      }
+    if (!readyToRender || !pdf) return;
+    const targetPage = Math.min(Math.max(Math.trunc(initialPage || 1), 1), pdf.numPages);
+    const targetSearch = String(initialSearch || '').trim();
+    const targetKey = `${documentId}:${docCacheKey}:${targetPage}:${targetSearch}`;
+    if (initialTargetRef.current === targetKey) return;
 
-      // Run initial search
-      if (initialSearch) {
-        timers.push(window.setTimeout(() => {
-          setSearchQuery(initialSearch);
-          performSearch(initialSearch, initialPage);
+    // Mark the destination only when the scheduled work actually starts. This
+    // keeps React Strict Mode cleanup from consuming the deep link prematurely.
+    const navigationTimer = window.setTimeout(() => {
+      initialTargetRef.current = targetKey;
+      goToPage(targetPage);
+    }, 180);
+    const searchTimer = targetSearch
+      ? window.setTimeout(() => {
+          setSearchQuery(targetSearch);
+          void performSearch(targetSearch, targetPage);
           setSearchOpen(true);
-        }, 500));
-      }
+        }, 380)
+      : null;
 
-      return () => timers.forEach((timer) => window.clearTimeout(timer));
-    }
-  }, [readyToRender, pdf, initialPage, initialSearch]);
+    return () => {
+      window.clearTimeout(navigationTimer);
+      if (searchTimer !== null) window.clearTimeout(searchTimer);
+    };
+  }, [readyToRender, pdf, documentId, docCacheKey, initialPage, initialSearch]);
 
 
   const hasNoText = useMemo(() => {
@@ -1604,11 +1615,47 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
 
     setIsSearching(true);
     const results: SearchMatch[] = [];
-    const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const normalizeSearchText = (value: string) => value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const vocabulary = buildCatalogVocabulary([
+      { text: title, weight: 20 },
+      { text: currentDoc?.description || '', weight: 6 },
+      { text: currentDoc?.category || '', weight: 12 },
+      { text: (currentDoc?.tags || []).join(' '), weight: 12 },
+      ...fullText.map((item) => ({ text: item.text, weight: 2 })),
+    ]);
+    const rawNormalizedQuery = normalizeSearchText(query).trim();
+    const resolution = resolveCatalogQueryTokens(rawNormalizedQuery.split(/\s+/), vocabulary);
+    const resolvedSearch = applyCatalogSpellingCorrections(query, resolution.corrections);
+    const normalizedQuery = normalizeSearchText(resolvedSearch).trim();
+    const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
+    const findSearchMatch = (text: string) => {
+      const exact = text.indexOf(normalizedQuery);
+      if (exact >= 0) return exact;
+      const textWords = text.match(/[a-z0-9]+/g) || [];
+      const tokenIndexes = queryTokens.map((token) => {
+        const tokenIndex = text.indexOf(token);
+        if (tokenIndex >= 0) return tokenIndex;
+        if (token.length < 5) return -1;
+        const closeWord = textWords.find((word) => (
+          (Math.abs(word.length - token.length) <= 1 && catalogTypoDistance(token, word) <= 1) ||
+          (token.endsWith('es') && word === token.slice(0, -2)) ||
+          (word.endsWith('es') && token === word.slice(0, -2)) ||
+          (token.endsWith('s') && word === token.slice(0, -1)) ||
+          (word.endsWith('s') && token === word.slice(0, -1))
+        ));
+        return closeWord ? text.indexOf(closeWord) : -1;
+      });
+      if (queryTokens.length > 0 && tokenIndexes.every((index) => index >= 0)) {
+        return Math.min(...tokenIndexes);
+      }
+      return -1;
+    };
+    if (resolution.corrections.length > 0 && resolvedSearch !== query) {
+      setSearchQuery(resolvedSearch);
+    }
     const createSearchSnippet = (text: string) => {
       const normalizedText = normalizeSearchText(text);
-      const matchIndex = normalizedText.indexOf(normalizedQuery);
+      const matchIndex = findSearchMatch(normalizedText);
       if (matchIndex === -1) return text.slice(0, 180).trim();
       const start = Math.max(0, matchIndex - 70);
       const end = Math.min(text.length, matchIndex + query.length + 90);
@@ -1622,7 +1669,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       
       for (const item of fullText) {
         const normalizedItemText = item.text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (normalizedItemText.includes(normalizedQuery)) {
+        if (findSearchMatch(normalizedItemText) >= 0) {
             if (!matchesByPage.has(item.page)) matchesByPage.set(item.page, []);
             matchesByPage.get(item.page)!.push(item);
         }
@@ -1707,7 +1754,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                 }
               });
 
-              if (results.length === resultCountBeforePage && normalizeSearchText(pageText).includes(normalizedQuery)) {
+              if (results.length === resultCountBeforePage && findSearchMatch(normalizeSearchText(pageText)) >= 0) {
                 results.push({
                   id: `match-${i}-page-${Math.random().toString(36).substring(2, 9)}`,
                   pageNumber: i,
@@ -1720,6 +1767,25 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
             console.warn(`Search error on page ${i}:`, e);
           }
         }
+    }
+
+    // Some image-heavy PDFs expose useful headings/bookmarks even when their
+    // page text layer is incomplete. Use that already persisted index as a
+    // verified fallback so the search can still jump to the correct page.
+    if (results.length === 0 && indexItems.length > 0) {
+      const pendingItems = [...indexItems];
+      while (pendingItems.length > 0) {
+        const item = pendingItems.shift();
+        if (!item) continue;
+        if (item.children?.length) pendingItems.push(...item.children);
+        if (findSearchMatch(normalizeSearchText(item.title)) < 0) continue;
+        results.push({
+          id: `match-${item.pageNumber}-index-${item.id}`,
+          pageNumber: item.pageNumber,
+          text: item.title,
+          rects: [],
+        });
+      }
     }
 
     setSearchResults(results);
@@ -1772,7 +1838,24 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       }
       return [];
     }
-  }, [pdf, numPages, fullText, hasNoText, isMobile, currentPage, dimensions?.isDoublePage]);
+  }, [pdf, numPages, fullText, hasNoText, isMobile, currentPage, dimensions?.isDoublePage, title, currentDoc, indexItems]);
+
+  // A deep-linked search can start a few milliseconds before the persisted
+  // page index finishes loading. Retry once that verified index is available;
+  // otherwise the panel could incorrectly remain on "No hay resultados".
+  useEffect(() => {
+    if (
+      !readyToRender ||
+      !pdf ||
+      !String(initialSearch || '').trim() ||
+      indexItems.length === 0 ||
+      searchResults.length > 0
+    ) return;
+    const retryTimer = window.setTimeout(() => {
+      void performSearch(String(initialSearch), initialPage);
+    }, 0);
+    return () => window.clearTimeout(retryTimer);
+  }, [readyToRender, pdf, initialSearch, initialPage, indexItems, searchResults.length, performSearch]);
 
   const handleSearchResultClick = (index: number) => {
     const result = searchResults[index];
@@ -1913,7 +1996,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   };
 
   const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPageInput(e.target.value);
+    setPageInput(e.target.value.replace(/\D/g, ''));
   };
 
   const handlePageInputBlur = () => {
@@ -1925,9 +2008,12 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     }
   };
 
-  const handlePageInputKeyDown = (e: React.KeyboardEvent) => {
+  const handlePageInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      handlePageInputBlur();
+      e.currentTarget.blur();
+    } else if (e.key === 'Escape') {
+      setPageInput((currentPage + 1).toString());
+      e.currentTarget.blur();
     }
   };
 
@@ -1936,7 +2022,18 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     setPageInput((currentPage + 1).toString());
   }, [currentPage]);
 
-  const downloadPdf = useCallback(async () => {
+  // Keep deep links reload-safe. The viewer used to change the visible page
+  // without updating ?page=, so refreshing could unexpectedly jump back to
+  // the page from which the catalog was first opened.
+  useEffect(() => {
+    if (!readyToRender || !pdf || !initialTargetRef.current || !onPageChange) return;
+    const visiblePage = Math.min(Math.max(currentPage + 1, 1), pdf.numPages);
+    if (lastReportedPageRef.current === visiblePage) return;
+    lastReportedPageRef.current = visiblePage;
+    onPageChange(visiblePage);
+  }, [currentPage, readyToRender, pdf, onPageChange]);
+
+  const downloadPdf = useCallback(() => {
     const finalUrl = downloadUrl || url;
     if (!finalUrl) {
       console.error("No existe URL de descarga para este catálogo");
@@ -1944,27 +2041,10 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     }
 
     try {
-      const response = await fetch(finalUrl);
-      if (!response.ok) throw new Error("No se pudo descargar el PDF");
-      
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      const fileName = title.trim()
-        ? `${title.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_')}.pdf`
-        : 'catalogo.pdf';
-        
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      downloadPdfFromUserGesture(finalUrl, title);
     } catch (error) {
-      console.warn("Error al descargar via fetch, intentando apertura directa:", error);
-      window.open(finalUrl, '_blank', 'noopener,noreferrer');
+      console.error("No se pudo iniciar la descarga del PDF:", error);
+      alert(error instanceof Error ? error.message : 'No se pudo descargar el PDF.');
     }
   }, [url, downloadUrl, title]);
 
@@ -2309,7 +2389,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       <main className="pdf-reader-main">
         <div className="pdf-viewer-container">
           {/* 2. TOOLBAR SUPERIOR */}
-          <header className="pdf-reader-toolbar !justify-between">
+          <header className="pdf-reader-toolbar">
             <div className="pdf-toolbar-left">
               {!isIndexOpen && (
                 <button 
@@ -2323,9 +2403,50 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-2">Visor de Catálogo</span>
             </div>
 
+            <nav className="pdf-toolbar-pagination" aria-label="Navegación por páginas">
+              <button
+                type="button"
+                onClick={() => goToPreviousPage()}
+                aria-label="Página anterior"
+                title="Página anterior"
+                disabled={!numPages || currentPage === 0}
+              >
+                <ChevronLeft aria-hidden="true" />
+              </button>
+
+              <div className="pdf-toolbar-page-counter">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={pageInput}
+                  onChange={handlePageInputChange}
+                  onBlur={handlePageInputBlur}
+                  onKeyDown={handlePageInputKeyDown}
+                  onFocus={(event) => event.currentTarget.select()}
+                  aria-label={`Ir a una página entre 1 y ${numPages || 1}`}
+                  title="Escribe una página y presiona Enter"
+                  disabled={!numPages}
+                />
+                <span aria-hidden="true">/</span>
+                <strong aria-label={`${numPages} páginas en total`}>{numPages || 0}</strong>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => goToNextPage()}
+                aria-label="Página siguiente"
+                title="Página siguiente"
+                disabled={!numPages || isAtLastPage}
+              >
+                <ChevronRight aria-hidden="true" />
+              </button>
+            </nav>
+
             <div className="pdf-toolbar-actions">
               <button
                 onClick={() => navigate('/buscar')}
+                className="pdf-toolbar-action--library"
                 title="Buscar en toda la biblioteca"
                 aria-label="Buscar en toda la biblioteca"
               >
@@ -2333,7 +2454,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
               </button>
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
-                className={cn(searchOpen && "bg-gray-100")}
+                className={cn("pdf-toolbar-action--search", searchOpen && "bg-gray-100")}
                 title="Buscar dentro de este PDF"
                 aria-label="Buscar dentro de este PDF"
               >
@@ -2343,23 +2464,40 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                 <button 
                   onClick={resetZoom} 
                   title="Restablecer" 
-                  className="bg-gray-100 text-blue-600 rounded-full"
+                  aria-label="Restablecer zoom"
+                  className="pdf-toolbar-action--reset bg-gray-100 text-blue-600 rounded-full"
                 >
                   <Minimize2 className="w-5 h-5" />
                 </button>
               )}
-              <button onClick={zoomOut} title="Zoom Out">
+              <button
+                onClick={zoomOut}
+                className="pdf-toolbar-action--zoom-out"
+                title="Alejar"
+                aria-label="Alejar"
+              >
                 <ZoomOut className="w-5 h-5" />
               </button>
-              <button onClick={zoomIn} title="Zoom In">
+              <button
+                onClick={zoomIn}
+                className="pdf-toolbar-action--zoom-in"
+                title="Acercar"
+                aria-label="Acercar"
+              >
                 <ZoomIn className="w-5 h-5" />
               </button>
-              <button onClick={() => mainAreaRef.current?.requestFullscreen()} title="Pantalla completa">
+              <button
+                onClick={() => mainAreaRef.current?.requestFullscreen()}
+                className="pdf-toolbar-action--fullscreen"
+                title="Pantalla completa"
+                aria-label="Pantalla completa"
+              >
                 <Maximize2 className="w-5 h-5" />
               </button>
               <button 
-                className={cn(isThumbnailPanelOpen && "is-active")}
-                title="Grid" 
+                className={cn("pdf-toolbar-action--thumbnails", isThumbnailPanelOpen && "is-active")}
+                title="Miniaturas"
+                aria-label="Abrir miniaturas"
                 onClick={() => setIsThumbnailPanelOpen(!isThumbnailPanelOpen)}
               >
                 <LayoutGrid className="w-5 h-5" />
@@ -3177,9 +3315,9 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         .pdf-reader-toolbar {
           height: 72px;
           padding: 0 34px;
-          display: flex;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
           align-items: center;
-          justify-content: space-between;
           gap: 24px;
           background: #f4f4f2;
           border-bottom: 1px solid rgba(0,0,0,0.04);
@@ -3190,6 +3328,21 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
           display: flex;
           align-items: center;
           gap: 8px;
+          min-width: 0;
+        }
+
+        .pdf-toolbar-left {
+          justify-self: start;
+        }
+
+        .pdf-toolbar-left > span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .pdf-toolbar-actions {
+          justify-self: end;
         }
 
         .pdf-toolbar-left strong {
@@ -3223,6 +3376,128 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         .pdf-toolbar-left button.is-active {
           background: rgba(37, 99, 235, 0.1);
           color: #2563eb;
+        }
+
+        .pdf-toolbar-pagination {
+          justify-self: center;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          color: #111;
+        }
+
+        .pdf-toolbar-pagination > button {
+          width: 38px;
+          height: 38px;
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.72);
+          color: rgba(0, 0, 0, 0.72);
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          transition:
+            background-color 160ms ease,
+            border-color 160ms ease,
+            color 160ms ease,
+            transform 160ms ease;
+        }
+
+        .pdf-toolbar-pagination > button svg {
+          width: 20px;
+          height: 20px;
+        }
+
+        .pdf-toolbar-pagination > button:hover:not(:disabled) {
+          border-color: rgba(0, 85, 184, 0.25);
+          background: #fff;
+          color: #0055b8;
+          transform: translateY(-1px);
+        }
+
+        .pdf-toolbar-pagination > button:disabled {
+          cursor: not-allowed;
+          opacity: 0.32;
+        }
+
+        .pdf-toolbar-page-counter {
+          height: 40px;
+          min-width: 104px;
+          padding: 0 11px;
+          border: 1px solid rgba(0, 0, 0, 0.11);
+          border-radius: 10px;
+          background: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+          transition:
+            border-color 160ms ease,
+            box-shadow 160ms ease;
+        }
+
+        .pdf-toolbar-page-counter:focus-within {
+          border-color: #0055b8;
+          box-shadow: 0 0 0 3px rgba(0, 85, 184, 0.12);
+        }
+
+        .pdf-toolbar-page-counter input {
+          width: 38px;
+          min-width: 0;
+          padding: 0;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: #0d3281;
+          font: inherit;
+          font-size: 14px;
+          font-weight: 800;
+          line-height: 1;
+          text-align: right;
+          font-variant-numeric: tabular-nums;
+          appearance: textfield;
+        }
+
+        .pdf-toolbar-page-counter input:disabled {
+          opacity: 0.5;
+        }
+
+        .pdf-toolbar-page-counter span,
+        .pdf-toolbar-page-counter strong {
+          color: rgba(0, 0, 0, 0.48);
+          font-size: 13px;
+          font-weight: 700;
+          line-height: 1;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .pdf-toolbar-pagination button:focus-visible,
+        .pdf-toolbar-page-counter input:focus-visible {
+          outline: 2px solid #0055b8;
+          outline-offset: 2px;
+        }
+
+        @media (max-width: 1100px) {
+          .pdf-reader-toolbar {
+            padding-inline: 18px;
+            gap: 12px;
+          }
+
+          .pdf-toolbar-left > span {
+            display: none;
+          }
+
+          .pdf-toolbar-actions {
+            gap: 3px;
+          }
+
+          .pdf-toolbar-action--library,
+          .pdf-toolbar-action--zoom-out,
+          .pdf-toolbar-action--zoom-in,
+          .pdf-toolbar-action--fullscreen {
+            display: none !important;
+          }
         }
 
         .pdf-stage {
@@ -3449,8 +3724,65 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
           }
 
           .pdf-reader-toolbar {
-            padding: 0 16px;
+            grid-template-columns: 34px minmax(0, auto) minmax(72px, 1fr);
+            padding: 0 10px;
             height: 60px;
+            gap: 6px;
+          }
+
+          .pdf-toolbar-left {
+            width: 34px;
+          }
+
+          .pdf-toolbar-left button,
+          .pdf-toolbar-actions button {
+            width: 34px;
+            height: 34px;
+          }
+
+          .pdf-toolbar-actions {
+            gap: 2px;
+          }
+
+          .pdf-toolbar-action--library,
+          .pdf-toolbar-action--reset,
+          .pdf-toolbar-action--zoom-out,
+          .pdf-toolbar-action--zoom-in,
+          .pdf-toolbar-action--fullscreen {
+            display: none !important;
+          }
+
+          .pdf-toolbar-pagination {
+            gap: 3px;
+          }
+
+          .pdf-toolbar-pagination > button {
+            width: 30px;
+            height: 34px;
+            border-radius: 9px;
+          }
+
+          .pdf-toolbar-pagination > button svg {
+            width: 18px;
+            height: 18px;
+          }
+
+          .pdf-toolbar-page-counter {
+            height: 36px;
+            min-width: 76px;
+            padding: 0 7px;
+            gap: 5px;
+            border-radius: 9px;
+          }
+
+          .pdf-toolbar-page-counter input {
+            width: 26px;
+            font-size: 13px;
+          }
+
+          .pdf-toolbar-page-counter span,
+          .pdf-toolbar-page-counter strong {
+            font-size: 12px;
           }
 
           .pdf-stage {

@@ -8,6 +8,14 @@ import { promisify } from "util";
 import { pipeline } from "stream/promises";
 import "dotenv/config";
 import { catalogCategories } from "./src/lib/catalogCategories";
+import {
+  FALLBACK_CATEGORY_ID,
+  FALLBACK_CATEGORY_NAME,
+  FALLBACK_CATEGORY_SLUG,
+  findFallbackCategory,
+  isFallbackCategory,
+  normalizeCategoryIdentity,
+} from "./src/lib/categoryStructure";
 import { startDriveCatalogSync, saveDriveThumbnail, fetchAndCacheDriveThumbnail } from "./lib/driveSync";
 import { google } from "googleapis";
 
@@ -417,6 +425,7 @@ function createDefaultCategoryRecords() {
 
 function ensureDefaultCategories(db: any) {
   if (!db.categories) db.categories = [];
+  if (!Array.isArray(db.deletedCategorySlugs)) db.deletedCategorySlugs = [];
 
   let changed = false;
   const categoriesBySlug = new Map<string, any>(
@@ -426,6 +435,7 @@ function ensureDefaultCategories(db: any) {
   );
 
   for (const defaultCategory of createDefaultCategoryRecords()) {
+    if (db.deletedCategorySlugs.includes(defaultCategory.slug)) continue;
     const existing = categoriesBySlug.get(defaultCategory.slug);
 
     if (!existing) {
@@ -1511,6 +1521,8 @@ async function startServer() {
       };
       
       db.categories.push(newCat);
+      db.deletedCategorySlugs = (db.deletedCategorySlugs || [])
+        .filter((slug: string) => slug !== String(newCat.slug || '').toLowerCase());
       saveDb(db);
       res.json(newCat);
     } catch (e: any) {
@@ -1550,13 +1562,49 @@ async function startServer() {
         return res.status(404).json({ error: "Category not found" });
       }
 
-      if (isDefaultCategory(category)) {
-        return res.status(400).json({ error: "Default catalog categories cannot be deleted" });
+      const categoryReferences = new Set([
+        normalizeCategoryIdentity(category.id),
+        normalizeCategoryIdentity(category.name),
+        normalizeCategoryIdentity(category.slug),
+      ]);
+      if (isFallbackCategory(category)) {
+        return res.status(400).json({ error: `${FALLBACK_CATEGORY_NAME} es la categoría de respaldo y no se puede eliminar` });
       }
 
+      let fallbackCategory: any = findFallbackCategory<any>(db.categories || []);
+      if (!fallbackCategory) {
+        fallbackCategory = {
+          id: FALLBACK_CATEGORY_ID,
+          name: FALLBACK_CATEGORY_NAME,
+          slug: FALLBACK_CATEGORY_SLUG,
+          description: 'Fichas técnicas, productos e innovaciones de Chaide.',
+          icon: 'Cloud',
+          imageUrl: '',
+          order: 0,
+          active: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        db.categories.push(fallbackCategory);
+      } else {
+        fallbackCategory.active = true;
+      }
+      const reassignedDocumentIds: string[] = [];
+      for (const document of db.documents || []) {
+        if (!categoryReferences.has(normalizeCategoryIdentity(document.category))) continue;
+        document.category = fallbackCategory.name;
+        document.updatedAt = new Date().toISOString();
+        reassignedDocumentIds.push(document.id);
+      }
+      if (isDefaultCategory(category)) {
+        db.deletedCategorySlugs = Array.from(new Set([
+          ...(db.deletedCategorySlugs || []),
+          String(category.slug || '').toLowerCase(),
+        ]));
+      }
       db.categories = (db.categories || []).filter((c: any) => c.id !== req.params.id);
       saveDb(db);
-      res.json({ success: true });
+      res.json({ success: true, fallbackCategory, reassignedDocumentIds });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

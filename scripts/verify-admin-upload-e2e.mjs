@@ -1,5 +1,5 @@
 import { File } from 'node:buffer';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { initializeApp, deleteApp } from 'firebase/app';
@@ -50,7 +50,18 @@ if (!pages.some((page) => page.text)) throw new Error('El PDF de prueba no tiene
 const app = initializeApp(firebaseConfig, `admin-e2e-${Date.now()}`);
 const auth = getAuth(app);
 const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-const credential = await signInWithEmailAndPassword(auth, adminEmail, password);
+let credential;
+let authenticationError;
+for (let attempt = 0; attempt < 3; attempt += 1) {
+  try {
+    credential = await signInWithEmailAndPassword(auth, adminEmail, password);
+    break;
+  } catch (error) {
+    authenticationError = error;
+    if (attempt < 2) await new Promise((resolveDelay) => setTimeout(resolveDelay, 800 * (attempt + 1)));
+  }
+}
+if (!credential) throw authenticationError || new Error('Firebase no pudo autenticar la prueba administrativa.');
 const firebaseToken = await credential.user.getIdToken();
 const id = `__admin-upload-e2e-${Date.now().toString(36)}`;
 const version = `e2e-${Date.now().toString(36)}`;
@@ -60,22 +71,44 @@ const chunkCount = Math.ceil(bytes.length / chunkBytes);
 let driveFileId = '';
 
 async function drive(action, payload = {}) {
-  const response = await fetch(driveUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, firebaseToken, ...payload }),
-  });
-  const result = await response.json();
-  if (!response.ok || !result.ok) throw new Error(result.error || `Drive ${action} falló.`);
-  return result;
+  const body = JSON.stringify({ action, firebaseToken, ...payload });
+  let lastError;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const response = await fetch(driveUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body,
+        redirect: 'follow',
+        signal: AbortSignal.timeout(45_000),
+      });
+      const result = await response.json().catch(() => null);
+      if (response.ok && result?.ok) return result;
+      if (result?.error) {
+        const serviceError = new Error(result.error);
+        serviceError.nonRetryable = true;
+        throw serviceError;
+      }
+      lastError = new Error(`Drive ${action} respondió ${response.status} sin JSON válido.`);
+    } catch (error) {
+      lastError = error;
+      if (error?.nonRetryable) throw error;
+    }
+    if (attempt < 4) {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 600 * (attempt + 1)));
+    }
+  }
+  throw lastError || new Error(`Drive ${action} no respondió después de varios intentos.`);
 }
 
 async function uploadDriveFile(fileName, value) {
+  const uploadKey = randomUUID();
   const started = await drive('uploadInit', {
     kind: 'catalogs',
     fileName,
     mimeType: 'application/pdf',
     size: value.length,
+    uploadKey,
   });
   let result;
   for (let from = 0; from < value.length; from += started.chunkSize) {
@@ -86,7 +119,22 @@ async function uploadDriveFile(fileName, value) {
       total: value.length,
       mimeType: 'application/pdf',
       base64: Buffer.from(part).toString('base64'),
+      sessionToken: started.sessionToken,
+      sessionExpires: started.sessionExpires,
     });
+    const verifiedStatus = await drive('uploadStatus', {
+      uploadUrl: started.uploadUrl,
+      uploadKey: started.uploadKey || uploadKey,
+      total: value.length,
+      mimeType: 'application/pdf',
+      sessionToken: started.sessionToken,
+      sessionExpires: started.sessionExpires,
+    });
+    if (verifiedStatus.complete) {
+      result = verifiedStatus;
+    } else if (verifiedStatus.nextOffset !== Math.min(from + part.length, value.length)) {
+      throw new Error('Drive no confirmó correctamente el avance reanudable.');
+    }
   }
   if (!result?.complete || !result.fileId) throw new Error('Drive no completó la subida.');
   return result;
@@ -96,7 +144,16 @@ async function downloadDriveFile(fileId) {
   const info = await drive('downloadInfo', { fileId });
   const parts = [];
   for (let index = 0; index < info.chunkCount; index++) {
-    const chunk = await drive('downloadChunk', { fileId, index });
+    const chunk = await drive('downloadChunk', {
+      fileId,
+      index,
+      total: info.size,
+      sessionToken: info.sessionToken,
+      sessionExpires: info.sessionExpires,
+    });
+    if (typeof chunk.base64 !== 'string' || !chunk.base64) {
+      throw new Error(`Drive devolvió un bloque sin datos (campos: ${Object.keys(chunk).sort().join(', ')}).`);
+    }
     parts.push(Buffer.from(chunk.base64, 'base64'));
   }
   const value = Buffer.concat(parts);
@@ -105,10 +162,12 @@ async function downloadDriveFile(fileId) {
 }
 
 try {
+  console.log('[E2E] Subiendo respaldo temporal a Drive.');
   const backup = skipDrive
     ? { fileId: 'verified-separately', downloadUrl: '' }
     : await uploadDriveFile(`__admin-upload-e2e-${basename(pdfPath)}`, bytes);
   driveFileId = skipDrive ? '' : backup.fileId;
+  console.log('[E2E] Respaldo temporal listo; guardando PDF e índice en Firestore.');
 
   for (const page of pages) {
     await setDoc(
@@ -155,6 +214,7 @@ try {
     isActive: true,
   });
   await setDoc(doc(db, 'pdfFiles', id), manifest);
+  console.log('[E2E] Publicación temporal lista; verificando lectura pública.');
 
   const publicApp = initializeApp(firebaseConfig, `public-e2e-${Date.now()}`);
   const publicDb = getFirestore(publicApp, firebaseConfig.firestoreDatabaseId);
@@ -182,6 +242,7 @@ try {
   const driveBytes = skipDrive
     ? Buffer.from(bytes)
     : await downloadDriveFile(driveFileId);
+  console.log('[E2E] Descargas verificadas; comparando integridad y limpiando datos temporales.');
   const hash = (value) => createHash('sha256').update(value).digest('hex');
   const searchableText = publicPages.docs.map((item) => String(item.data().text || '')).join(' ');
   const searchProbe = pages.flatMap((page) => page.text.split(/\s+/)).find((word) => word.length >= 6) || '';
@@ -196,6 +257,9 @@ try {
     indexPages: publicPages.size,
     searchAvailable: Boolean(searchProbe && searchableText.includes(searchProbe)),
     driveBackup: skipDrive ? 'verified-separately' : hash(bytes) === hash(driveBytes),
+    driveChecksum: skipDrive
+      ? 'verified-separately'
+      : backup.md5Checksum === createHash('md5').update(bytes).digest('hex'),
     downloadValid: hash(bytes) === hash(restored),
   };
   console.log(JSON.stringify(result));
@@ -208,6 +272,7 @@ try {
     result.indexPages !== pages.length ||
     !result.searchAvailable ||
     result.driveBackup === false ||
+    result.driveChecksum === false ||
     !result.downloadValid
   ) {
     process.exitCode = 1;

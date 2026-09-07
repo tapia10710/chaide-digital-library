@@ -24,6 +24,8 @@ export interface DocumentDef {
   visibility?: string;
   externalUrl?: string;
   driveFileId?: string;
+  driveMd5Checksum?: string;
+  driveHistoricalFileIds?: string[];
   coverFileId?: string;
   driveBackupStatus?: 'ready' | 'error';
   storageVersion?: string;

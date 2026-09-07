@@ -2,6 +2,7 @@ import React, { useRef, useState, DragEvent, useEffect } from 'react';
 import { Upload, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn, startsWithSafe, getSafeUrl } from '../../lib/utils';
+import { FALLBACK_CATEGORY_NAME, findFallbackCategory } from '../../lib/categoryStructure';
 
 interface PendingFile {
   id: string;
@@ -121,7 +122,9 @@ export default function AdminUploadQueue({ initialReplaceDocId }: { initialRepla
   const { fetchDocuments, categories, documents } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [queue, setQueue] = useState<PendingFile[]>([]);
-  const [globalCategory, setGlobalCategory] = useState(categories[0]?.name || 'Sin categoría');
+  const [globalCategory, setGlobalCategory] = useState(
+    findFallbackCategory(categories)?.name || FALLBACK_CATEGORY_NAME,
+  );
   const [globalVisibility, setGlobalVisibility] = useState('Público');
   const [isDragging, setIsDragging] = useState(false);
   
@@ -137,6 +140,13 @@ export default function AdminUploadQueue({ initialReplaceDocId }: { initialRepla
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [initialReplaceDocId]);
+
+  useEffect(() => {
+    const fallback = findFallbackCategory(categories);
+    if (fallback && !categories.some((category) => category.name === globalCategory)) {
+      setGlobalCategory(fallback.name);
+    }
+  }, [categories, globalCategory]);
 
   const hUploadClick = () => {
     if (mode === 'replace' && !replaceTargetId) {

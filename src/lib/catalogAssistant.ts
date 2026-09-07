@@ -4,6 +4,17 @@ import {
   normalizeCatalogSearchText,
   type CatalogSearchPageData,
 } from './catalogSearchIndex';
+import {
+  assistantDocumentVersion,
+  isAssistantDocumentEligible,
+} from './catalogAssistantFreshness';
+import {
+  applyCatalogSpellingCorrections,
+  buildCatalogVocabulary,
+  resolveCatalogQueryTokens,
+  type CatalogSpellingCorrection,
+  type CatalogVocabulary,
+} from './catalogAssistantSpelling';
 
 export type CatalogAssistantSource = {
   catalogId: string;
@@ -12,6 +23,7 @@ export type CatalogAssistantSource = {
   snippet: string;
   score: number;
   searchTerm: string;
+  indexVersion: string;
 };
 
 export type CatalogAssistantAnswer = {
@@ -19,12 +31,14 @@ export type CatalogAssistantAnswer = {
   sources: CatalogAssistantSource[];
   searchedCatalogs: number;
   searchedPages: number;
+  corrections: CatalogSpellingCorrection[];
+  interpretedQuestion: string;
 };
 
 const STOP_WORDS = new Set([
   'a', 'al', 'algo', 'como', 'con', 'cual', 'cuales', 'cuando', 'de', 'del',
   'datos', 'dime', 'donde', 'el', 'en', 'es', 'esa', 'ese', 'esta', 'este', 'hay',
-  'informacion', 'la', 'las', 'lo', 'los', 'me', 'para', 'pero', 'por', 'puede',
+  'informacion', 'la', 'las', 'lo', 'los', 'mas', 'me', 'otro', 'otros', 'para', 'pero', 'por', 'puede',
   'que', 'saber', 'se', 'si', 'son', 'su', 'sus', 'tiene', 'un', 'una', 'y', 'yo',
 ]);
 
@@ -47,14 +61,48 @@ type CachedIndex = {
 };
 
 const indexCache = new Map<string, Promise<CachedIndex>>();
+let vocabularyCache: { key: string; vocabulary: CatalogVocabulary } | null = null;
 
-function meaningfulTokens(value: string) {
+function documentIndexKey(document: DocumentDef) {
+  return `${document.id}:${assistantDocumentVersion(document)}`;
+}
+
+export function pruneCatalogAssistantCache(documents: DocumentDef[]) {
+  const currentKeys = new Set(documents.filter(isAssistantDocumentEligible).map(documentIndexKey));
+  for (const key of indexCache.keys()) {
+    if (!currentKeys.has(key)) indexCache.delete(key);
+  }
+  if (vocabularyCache && vocabularyCache.key !== Array.from(currentKeys).sort().join('|')) {
+    vocabularyCache = null;
+  }
+}
+
+function queryTokens(value: string) {
   return Array.from(new Set(
     normalizeCatalogSearchText(value)
       .replace(/[^a-z0-9]+/g, ' ')
       .split(' ')
-      .filter((token) => token.length >= 2 && !STOP_WORDS.has(token)),
+      .filter((token) => token.length >= 2),
   ));
+}
+
+function vocabularyForIndexes(
+  indexes: Array<{ document: DocumentDef; pages: CatalogSearchPageData[] }>,
+) {
+  const key = indexes.map(({ document }) => documentIndexKey(document)).sort().join('|');
+  if (vocabularyCache?.key === key) return vocabularyCache.vocabulary;
+  function* entries() {
+    for (const { document, pages } of indexes) {
+      yield { text: document.title, weight: 30 };
+      yield { text: document.category || '', weight: 16 };
+      yield { text: document.description || '', weight: 8 };
+      yield { text: (document.tags || []).join(' '), weight: 20 };
+      for (const page of pages) yield { text: page.text, weight: 2 };
+    }
+  }
+  const vocabulary = buildCatalogVocabulary(entries());
+  vocabularyCache = { key, vocabulary };
+  return vocabulary;
 }
 
 function expandedTokens(tokens: string[]) {
@@ -118,7 +166,7 @@ function makeSnippet(text: string, tokens: string[]) {
 }
 
 async function loadIndex(document: DocumentDef) {
-  const key = `${document.id}:${document.searchIndexVersion || document.fileUrl || 'current'}`;
+  const key = documentIndexKey(document);
   const existing = indexCache.get(key);
   if (existing) return existing;
   const request = loadPersistedCatalogSearchIndex(document)
@@ -134,22 +182,20 @@ export async function answerCatalogQuestion(
   currentCatalogId?: string,
   onProgress?: (completed: number, total: number) => void,
 ): Promise<CatalogAssistantAnswer> {
-  const normalizedQuestion = normalizeCatalogSearchText(question);
-  const tokens = meaningfulTokens(question);
-  if (!normalizedQuestion || tokens.length === 0) {
+  const rawTokens = queryTokens(question);
+  if (rawTokens.length === 0) {
     return {
       text: 'Escribe el producto, medida, material o característica que deseas consultar.',
       sources: [],
       searchedCatalogs: 0,
       searchedPages: 0,
+      corrections: [],
+      interpretedQuestion: question,
     };
   }
 
-  const eligible = documents.filter((document) =>
-    document.status === 'ready' &&
-    document.isActive !== false &&
-    document.visibility !== 'private' &&
-    document.searchIndexStatus !== 'no-text');
+  pruneCatalogAssistantCache(documents);
+  const eligible = documents.filter(isAssistantDocumentEligible);
   const indexes: Array<{ document: DocumentDef; pages: CatalogSearchPageData[] }> = [];
   let nextDocument = 0;
   let completed = 0;
@@ -164,13 +210,35 @@ export async function answerCatalogQuestion(
   });
   await Promise.all(workers);
 
+  const resolution = resolveCatalogQueryTokens(rawTokens, vocabularyForIndexes(indexes), STOP_WORDS);
+  const tokens = resolution.tokens;
+  const normalizedQuestion = tokens.join(' ');
+  const interpretedQuestion = applyCatalogSpellingCorrections(question, resolution.corrections);
+  if (tokens.length === 0) {
+    return {
+      text: 'Escribe el nombre de un producto, una medida, un material o una característica.',
+      sources: [],
+      searchedCatalogs: eligible.length,
+      searchedPages: indexes.reduce((total, item) => total + item.pages.length, 0),
+      corrections: resolution.corrections,
+      interpretedQuestion,
+    };
+  }
   const expanded = expandedTokens(tokens);
   const matches: CatalogAssistantSource[] = [];
   let searchedPages = 0;
   for (const { document, pages } of indexes) {
     searchedPages += pages.length;
+    const normalizedTitle = normalizeCatalogSearchText(document.title);
+    const titleMatches = tokens.filter((token) => normalizedTitle.includes(token)).length;
+    const titleRelevance = titleMatches * 12 + (titleMatches >= 2 ? 20 : 0);
     for (const page of pages) {
       let score = scorePage(page.text, normalizedQuestion, tokens, expanded);
+      // Product names frequently appear in both the question and catalogue
+      // title, while generic words such as "colores" may occur in unrelated
+      // catalogues. Title agreement keeps Edredón Zafiro ahead of Sábanas
+      // Zafiro without excluding useful cross-catalogue evidence.
+      if (score > 0) score += titleRelevance;
       if (document.id === currentCatalogId) score += 3;
       if (score < 10) continue;
       matches.push({
@@ -182,6 +250,7 @@ export async function answerCatalogQuestion(
         searchTerm: [...tokens]
           .filter((token) => normalizeCatalogSearchText(page.text).includes(token))
           .sort((a, b) => b.length - a.length)[0] || tokens[0],
+        indexVersion: assistantDocumentVersion(document),
       });
     }
   }
@@ -202,6 +271,8 @@ export async function answerCatalogQuestion(
       sources: [],
       searchedCatalogs: eligible.length,
       searchedPages,
+      corrections: resolution.corrections,
+      interpretedQuestion,
     };
   }
 
@@ -211,5 +282,7 @@ export async function answerCatalogQuestion(
     sources,
     searchedCatalogs: eligible.length,
     searchedPages,
+    corrections: resolution.corrections,
+    interpretedQuestion,
   };
 }

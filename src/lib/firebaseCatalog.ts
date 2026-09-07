@@ -6,13 +6,25 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  onSnapshot,
   query,
   serverTimestamp,
   setDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import type { DocumentDef } from './mockData';
+import { buildCatalogSearchTokens } from './catalogSearchTokens';
+import {
+  FALLBACK_CATEGORY_ID,
+  FALLBACK_CATEGORY_NAME,
+  FALLBACK_CATEGORY_SLUG,
+  findFallbackCategory,
+  isFallbackCategory,
+  normalizeCategoryIdentity,
+} from './categoryStructure';
 import { del as deleteCachedValue, get as getCachedValue, set as setCachedValue } from 'idb-keyval';
 
 export const FIREBASE_ADMIN_EMAIL =
@@ -33,6 +45,11 @@ type CategoryLike = {
   active?: boolean;
   createdAt?: string;
   updatedAt?: string;
+};
+
+export type FirebaseCategoryDeletionResult = {
+  fallbackCategory: CategoryLike;
+  reassignedDocumentIds: string[];
 };
 
 type BannerLike = {
@@ -127,6 +144,40 @@ export async function fetchFirebaseDocuments(isAdmin = false): Promise<DocumentD
     ));
 }
 
+/**
+ * Keeps the catalogue list current in already-open browser tabs. Deletions are
+ * hidden by the public query as soon as their visibility/status changes, while
+ * replacements arrive with a new searchIndexVersion that invalidates old
+ * assistant and search caches.
+ */
+export async function subscribeFirebaseDocuments(
+  isAdmin: boolean,
+  onDocuments: (documents: DocumentDef[]) => void,
+  onError?: (error: Error) => void,
+) {
+  await auth.authStateReady();
+  const canReadAdmin = isAdmin && isFirebaseAdminEmail(auth.currentUser?.email);
+  const source = canReadAdmin
+    ? collection(db, 'documents')
+    : query(
+      collection(db, 'documents'),
+      where('status', '==', 'ready'),
+      where('isActive', '==', true),
+      where('visibility', '==', 'public'),
+    );
+
+  return onSnapshot(source, (snapshot) => {
+    const documents = snapshot.docs
+      .map((item) => normalizeSnapshot<DocumentDef>(item))
+      .filter((item) => canReadAdmin || (
+        item.status === 'ready' &&
+        item.isActive !== false &&
+        item.visibility !== 'private'
+      ));
+    onDocuments(documents);
+  }, (error) => onError?.(error));
+}
+
 export async function fetchFirebaseDocument(
   id: string,
   isAdmin = false,
@@ -144,16 +195,95 @@ export async function fetchFirebaseDocument(
 
 export async function saveFirebaseDocument(id: string, value: Partial<DocumentDef>) {
   const target = doc(db, 'documents', id);
-  const exists = (await getDoc(target)).exists();
-  await setDoc(target, withoutUndefined({
-    ...value,
-    id,
-    updatedAt: serverTimestamp(),
-    ...(exists ? {} : { createdAt: serverTimestamp() }),
-  }), { merge: true });
+  const currentSnapshot = await getDoc(target);
+  const exists = currentSnapshot.exists();
+  const current = currentSnapshot.data() || {};
+  const currentPubliclySearchable =
+    exists &&
+    current.status === 'ready' &&
+    current.isActive !== false &&
+    current.visibility !== 'private';
+  const publiclySearchable =
+    (value.status ?? current.status) === 'ready' &&
+    (value.isActive ?? current.isActive) !== false &&
+    (value.visibility ?? current.visibility) !== 'private';
+  const searchVersionChanged = Boolean(
+    value.searchIndexVersion && value.searchIndexVersion !== current.searchIndexVersion,
+  );
+  const searchVisibilityChanged = currentPubliclySearchable !== publiclySearchable;
+  const needsSearchPromotion = publiclySearchable &&
+    (!exists || searchVisibilityChanged || searchVersionChanged);
+
+  // Hide search pages before making a catalogue private. Publishing works in
+  // the opposite order: metadata first, pages second, so draft text is never
+  // exposed before the catalogue itself is public.
+  const hidesPreviouslyPublicSearch = exists && searchVisibilityChanged && !publiclySearchable;
+  if (hidesPreviouslyPublicSearch) {
+    await syncGlobalSearchVisibility(id, false);
+  }
+  try {
+    await setDoc(target, withoutUndefined({
+      ...value,
+      id,
+      updatedAt: serverTimestamp(),
+      ...(exists ? {} : { createdAt: serverTimestamp() }),
+      ...(needsSearchPromotion ? { searchVisibilityStatus: 'pending' } : {}),
+      ...(searchVisibilityChanged && !publiclySearchable
+        ? { searchVisibilityStatus: deleteField() }
+        : {}),
+    }), { merge: true });
+  } catch (error) {
+    if (hidesPreviouslyPublicSearch) {
+      try {
+        await syncGlobalSearchVisibility(id, true);
+      } catch {
+        await setDoc(doc(db, 'maintenanceTasks', `search-visibility-${id}`), {
+          type: 'search-visibility',
+          documentId: id,
+          isPublic: true,
+          status: 'pending',
+          updatedAt: serverTimestamp(),
+        }).catch(() => undefined);
+      }
+    }
+    throw error;
+  }
   await recordAdminAudit(exists ? 'document.update' : 'document.create', id, {
     fields: Object.keys(value),
   });
+  if (needsSearchPromotion) {
+    try {
+      await syncGlobalSearchVisibility(id, true);
+      await setDoc(target, {
+        searchVisibilityStatus: deleteField(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      await deleteDoc(doc(db, 'maintenanceTasks', `search-visibility-${id}`)).catch(() => undefined);
+    } catch (error) {
+      // The document and PDF are already valid. Keep them published, leave the
+      // search pages private, and persist a safe retry instead of making the
+      // publication rollback a version that is already referenced.
+      await setDoc(doc(db, 'maintenanceTasks', `search-visibility-${id}`), {
+        type: 'search-visibility',
+        documentId: id,
+        isPublic: true,
+        status: 'pending',
+        updatedAt: serverTimestamp(),
+      }).catch(() => undefined);
+      console.warn('[Search] La visibilidad del índice se reintentará durante el mantenimiento.', error);
+    }
+  }
+}
+
+async function syncGlobalSearchVisibility(id: string, publiclySearchable: boolean) {
+  const snapshot = await getDocs(query(
+    collection(db, 'catalogSearchPages'),
+    where('catalogId', '==', id),
+  ));
+  for (let start = 0; start < snapshot.docs.length; start += 10) {
+    await Promise.all(snapshot.docs.slice(start, start + 10).map((page) =>
+      setDoc(page.ref, { isPublic: publiclySearchable }, { merge: true })));
+  }
 }
 
 export async function deleteFirebaseDocument(id: string) {
@@ -173,20 +303,28 @@ export async function deleteFirebaseDocument(id: string) {
       status: 'processing',
       updatedAt: serverTimestamp(),
     }, { merge: true });
+    await syncGlobalSearchVisibility(id, false);
   }
 
   const chunks = await getDocs(collection(db, 'pdfFiles', id, 'chunks'));
   const versions = await getDocs(collection(db, 'pdfFiles', id, 'versions'));
   const searchPages = await getDocs(collection(db, 'pdfSearchIndexes', id, 'pages'));
+  const globalSearchPages = await getDocs(query(
+    collection(db, 'catalogSearchPages'),
+    where('catalogId', '==', id),
+  ));
   await deleteDocumentRefsInGroups(chunks.docs.map((item) => item.ref));
   await deleteDocumentRefsInGroups(versions.docs.map((item) => item.ref));
   await deleteDocumentRefsInGroups(searchPages.docs.map((item) => item.ref));
+  await deleteDocumentRefsInGroups(globalSearchPages.docs.map((item) => item.ref));
   await deleteDoc(doc(db, 'pdfFiles', id)).catch(() => undefined);
   await deleteDoc(doc(db, 'pdfSearchIndexes', id)).catch(() => undefined);
 
-  const taskRef = doc(db, 'maintenanceTasks', `drive-delete-${id}`);
+  const deletionTaskId = `drive-delete-${id}`;
   if (driveFileIds.length) {
-    await setDoc(taskRef, {
+    // Register the external cleanup before removing the last Firestore record.
+    // If this write fails, the hidden document remains available for retry.
+    await setDoc(doc(db, 'maintenanceTasks', deletionTaskId), {
       type: 'drive-delete',
       documentId: id,
       fileIds: driveFileIds,
@@ -195,31 +333,52 @@ export async function deleteFirebaseDocument(id: string) {
     });
   }
   await deleteDoc(doc(db, 'documents', id));
+  const cleanup = await deleteDriveFilesReliably(id, driveFileIds, deletionTaskId);
+  await recordAdminAudit('document.delete', id, {
+    driveFilesDeleted: cleanup.deleted,
+    driveFilesPending: cleanup.pending.length,
+  });
+}
 
-  // Drive operations remain sequential to avoid Apps Script throttling. A
-  // persistent maintenance task makes retries possible even after the main
-  // Firestore document has already been removed.
-  const pendingDriveFileIds: string[] = [];
-  for (const fileId of driveFileIds) {
+export async function deleteDriveFilesReliably(
+  documentId: string,
+  fileIds: string[],
+  taskId = `drive-cleanup-${documentId}-${Date.now().toString(36)}`,
+) {
+  const uniqueFileIds = Array.from(new Set(fileIds.map(String).filter(Boolean)));
+  if (!uniqueFileIds.length) return { deleted: 0, pending: [] as string[] };
+
+  const taskRef = doc(db, 'maintenanceTasks', taskId);
+  // Persist the intent before contacting Drive. Closing the tab or losing the
+  // network after publication must never make the old backup impossible to
+  // clean up later.
+  await setDoc(taskRef, {
+    type: 'drive-delete',
+    documentId,
+    fileIds: uniqueFileIds,
+    status: 'pending',
+    updatedAt: serverTimestamp(),
+  });
+
+  const pending: string[] = [];
+  for (const fileId of uniqueFileIds) {
     try {
       await deleteFileFromDrive(fileId);
     } catch {
-      pendingDriveFileIds.push(fileId);
+      pending.push(fileId);
     }
   }
-  if (pendingDriveFileIds.length) {
+
+  if (pending.length) {
     await setDoc(taskRef, {
-      fileIds: pendingDriveFileIds,
+      fileIds: pending,
       status: 'pending',
       updatedAt: serverTimestamp(),
-    }, { merge: true }).catch(() => undefined);
+    }, { merge: true });
   } else {
-    await deleteDoc(taskRef).catch(() => undefined);
+    await deleteDoc(taskRef);
   }
-  await recordAdminAudit('document.delete', id, {
-    driveFilesDeleted: driveFileIds.length - pendingDriveFileIds.length,
-    driveFilesPending: pendingDriveFileIds.length,
-  });
+  return { deleted: uniqueFileIds.length - pending.length, pending };
 }
 
 async function deleteDocumentRefsInGroups(refs: Array<{ path: string }>) {
@@ -233,6 +392,7 @@ export async function runFirebaseMaintenance() {
   const summary = {
     driveFilesDeleted: 0,
     driveFilesPending: 0,
+    searchVisibilityPending: 0,
     catalogCleanupsCompleted: 0,
     orphanManifestsDeleted: 0,
   };
@@ -240,6 +400,25 @@ export async function runFirebaseMaintenance() {
   const tasks = await getDocs(collection(db, 'maintenanceTasks'));
   for (const task of tasks.docs) {
     const data = task.data();
+    if (data.type === 'search-visibility') {
+      try {
+        const documentId = String(data.documentId || '');
+        const target = doc(db, 'documents', documentId);
+        const targetSnapshot = await getDoc(target);
+        if (targetSnapshot.exists()) {
+          await syncGlobalSearchVisibility(documentId, data.isPublic === true);
+          await setDoc(target, {
+            searchVisibilityStatus: deleteField(),
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        }
+        await deleteDoc(task.ref);
+        summary.catalogCleanupsCompleted += 1;
+      } catch {
+        summary.searchVisibilityPending += 1;
+      }
+      continue;
+    }
     if (data.type !== 'drive-delete') continue;
     const pending: string[] = [];
     for (const fileId of Array.isArray(data.fileIds) ? data.fileIds.map(String) : []) {
@@ -265,6 +444,19 @@ export async function runFirebaseMaintenance() {
   const documents = await getDocs(collection(db, 'documents'));
   for (const item of documents.docs) {
     const data = item.data();
+    if (data.searchVisibilityStatus === 'pending') {
+      try {
+        await syncGlobalSearchVisibility(item.id, true);
+        await setDoc(item.ref, {
+          searchVisibilityStatus: deleteField(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+        await deleteDoc(doc(db, 'maintenanceTasks', `search-visibility-${item.id}`)).catch(() => undefined);
+        summary.catalogCleanupsCompleted += 1;
+      } catch {
+        // Keep the pending marker for the next safe maintenance attempt.
+      }
+    }
     if (data.maintenanceStatus !== 'cleanup-pending') continue;
     const storageVersion = String(data.storageVersion || '');
     const searchVersion = String(data.searchIndexVersion || '');
@@ -282,9 +474,10 @@ export async function runFirebaseMaintenance() {
   }
 
   const documentIds = new Set(documents.docs.map((item) => item.id));
-  const [pdfManifests, searchManifests] = await Promise.all([
+  const [pdfManifests, searchManifests, globalSearchPages] = await Promise.all([
     getDocs(collection(db, 'pdfFiles')),
     getDocs(collection(db, 'pdfSearchIndexes')),
+    getDocs(collection(db, 'catalogSearchPages')),
   ]);
   for (const manifest of pdfManifests.docs) {
     if (documentIds.has(manifest.id)) continue;
@@ -304,6 +497,11 @@ export async function runFirebaseMaintenance() {
     await deleteDoc(manifest.ref);
     summary.orphanManifestsDeleted += 1;
   }
+  const orphanGlobalPages = globalSearchPages.docs.filter(
+    (page) => !documentIds.has(String(page.data().catalogId || '')),
+  );
+  await deleteDocumentRefsInGroups(orphanGlobalPages.map((page) => page.ref));
+  summary.orphanManifestsDeleted += orphanGlobalPages.length;
 
   if (Object.values(summary).some((value) => value > 0)) {
     await recordAdminAudit('maintenance.run', 'firebase', summary);
@@ -338,12 +536,75 @@ export async function saveFirebaseCategory(id: string, value: Partial<CategoryLi
   await recordAdminAudit(exists ? 'category.update' : 'category.create', id);
 }
 
-export async function deleteFirebaseCategory(id: string) {
-  const previous = await getDoc(doc(db, 'categories', id));
-  const imageId = extractManagedDriveFileId(String(previous.data()?.imageUrl || ''));
-  if (imageId) await deleteFileFromDrive(imageId);
-  await deleteDoc(doc(db, 'categories', id));
-  await recordAdminAudit('category.delete', id);
+export async function deleteFirebaseCategory(id: string): Promise<FirebaseCategoryDeletionResult> {
+  const categoryRef = doc(db, 'categories', id);
+  const [previous, categorySnapshot, documentSnapshot] = await Promise.all([
+    getDoc(categoryRef),
+    getDocs(collection(db, 'categories')),
+    getDocs(collection(db, 'documents')),
+  ]);
+  if (!previous.exists()) throw new Error('La categoría ya no existe.');
+
+  const category = normalizeSnapshot<CategoryLike>(previous);
+  const normalizedCategoryReferences = new Set([
+    normalizeCategoryIdentity(category.id),
+    normalizeCategoryIdentity(category.name),
+    normalizeCategoryIdentity(category.slug),
+  ].filter(Boolean));
+  if (isFallbackCategory(category)) {
+    throw new Error(`“${FALLBACK_CATEGORY_NAME}” es la categoría de respaldo y no se puede eliminar.`);
+  }
+
+  const existingFallback = findFallbackCategory(
+    categorySnapshot.docs.map((item) => normalizeSnapshot<CategoryLike>(item)),
+  );
+  const fallbackCategory: CategoryLike = existingFallback || {
+    id: FALLBACK_CATEGORY_ID,
+    name: FALLBACK_CATEGORY_NAME,
+    slug: FALLBACK_CATEGORY_SLUG,
+    description: 'Fichas técnicas, productos e innovaciones de Chaide.',
+    icon: 'Cloud',
+    imageUrl: '',
+    order: 0,
+    active: true,
+  };
+  if (!existingFallback) {
+    await saveFirebaseCategory(fallbackCategory.id, fallbackCategory);
+  } else if (existingFallback.active === false) {
+    await saveFirebaseCategory(existingFallback.id, { active: true });
+    fallbackCategory.active = true;
+  }
+
+  const affectedDocuments = documentSnapshot.docs.filter((item) =>
+    normalizedCategoryReferences.has(normalizeCategoryIdentity(item.data().category)));
+  const groups = affectedDocuments.length
+    ? Array.from({ length: Math.ceil(affectedDocuments.length / 400) }, (_, index) =>
+      affectedDocuments.slice(index * 400, (index + 1) * 400))
+    : [[]];
+
+  for (let index = 0; index < groups.length; index += 1) {
+    const batch = writeBatch(db);
+    for (const item of groups[index]) {
+      batch.set(item.ref, {
+        category: fallbackCategory.name,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    }
+    if (index === groups.length - 1) batch.delete(categoryRef);
+    await batch.commit();
+  }
+
+  const imageId = extractManagedDriveFileId(String(category.imageUrl || ''));
+  if (imageId) await deleteFileFromDrive(imageId).catch(() => undefined);
+  await recordAdminAudit('category.delete', id, {
+    previousName: category.name,
+    fallbackCategory: fallbackCategory.name,
+    reassignedDocuments: affectedDocuments.length,
+  });
+  return {
+    fallbackCategory,
+    reassignedDocumentIds: affectedDocuments.map((item) => item.id),
+  };
 }
 
 export async function fetchFirebaseBanner(): Promise<BannerLike | null> {
@@ -380,6 +641,20 @@ export type DriveUploadResult = {
   previewUrl: string;
   downloadUrl: string;
   thumbnailUrl: string;
+  md5Checksum?: string;
+};
+
+export type DriveCatalogFile = {
+  fileId: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+  updatedAt: string;
+  driveUrl: string;
+  previewUrl: string;
+  downloadUrl: string;
+  md5Checksum?: string;
 };
 
 export type FirebasePdfUploadResult = {
@@ -418,38 +693,88 @@ export type FirebasePdfSearchPage = {
   text: string;
 };
 
+export type FirebaseGlobalSearchPage = FirebasePdfSearchPage & {
+  catalogId: string;
+  version: string;
+};
+
 export async function uploadPdfSearchIndex(
   id: string,
   pages: FirebasePdfSearchPage[],
   version: string,
   onProgress?: (progress: number) => void,
 ) {
-  for (let start = 0; start < pages.length; start += 10) {
-    const group = pages.slice(start, start + 10);
-    await Promise.all(group.map((page) => setDoc(
-      doc(
-        db,
-        'pdfSearchIndexes',
-        id,
-        'pages',
-        `${version}-${String(page.pageNumber).padStart(5, '0')}`,
-      ),
-      {
-        version,
-        pageNumber: page.pageNumber,
-        text: page.text,
-      },
-    )));
-    onProgress?.(Math.round((Math.min(start + group.length, pages.length) / Math.max(pages.length, 1)) * 100));
-  }
+  try {
+    for (let start = 0; start < pages.length; start += 10) {
+      const group = pages.slice(start, start + 10);
+      await Promise.all(group.flatMap((page) => {
+        const pageSuffix = String(page.pageNumber).padStart(5, '0');
+        const pageData = {
+          catalogId: id,
+          version,
+          pageNumber: page.pageNumber,
+          text: page.text,
+          tokens: buildCatalogSearchTokens(page.text),
+          // Publication metadata is committed only after both the PDF and its
+          // index exist. saveFirebaseDocument promotes these pages afterwards.
+          isPublic: false,
+        };
+        return [
+          setDoc(
+            doc(db, 'pdfSearchIndexes', id, 'pages', `${version}-${pageSuffix}`),
+            {
+              version,
+              pageNumber: page.pageNumber,
+              text: page.text,
+            },
+          ),
+          setDoc(doc(db, 'catalogSearchPages', `${id}__${version}__${pageSuffix}`), pageData),
+        ];
+      }));
+      onProgress?.(Math.round((Math.min(start + group.length, pages.length) / Math.max(pages.length, 1)) * 100));
+    }
 
-  await setDoc(doc(db, 'pdfSearchIndexes', id), {
-    version,
-    pageCount: pages.length,
-    hasText: pages.some((page) => page.text.trim().length > 0),
-    updatedAt: serverTimestamp(),
-  }, { merge: true });
-  return version;
+    await setDoc(doc(db, 'pdfSearchIndexes', id), {
+      version,
+      pageCount: pages.length,
+      hasText: pages.some((page) => page.text.trim().length > 0),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    return version;
+  } catch (error) {
+    await discardPdfSearchIndexVersion(id, version).catch(() => undefined);
+    throw error;
+  }
+}
+
+/** One indexed query replaces loading every catalogue index in a fresh browser. */
+export async function searchFirebaseCatalogPages(
+  queryTokens: string[],
+  maximumResults = 750,
+): Promise<FirebaseGlobalSearchPage[]> {
+  const tokens = Array.from(new Set(queryTokens.flatMap(buildCatalogSearchTokens))).slice(0, 10);
+  if (!tokens.length) return [];
+  const [metadata, snapshot] = await Promise.all([
+    getDoc(doc(db, 'catalogSearchMeta', 'current')),
+    getDocs(query(
+      collection(db, 'catalogSearchPages'),
+      where('tokens', 'array-contains-any', tokens),
+      where('isPublic', '==', true),
+      limit(Math.max(1, Math.min(maximumResults, 750))),
+    )),
+  ]);
+  if (!metadata.exists() || metadata.data().ready !== true) {
+    throw new Error('El índice global todavía no está preparado.');
+  }
+  return snapshot.docs.map((item) => {
+    const value = item.data();
+    return {
+      catalogId: String(value.catalogId || ''),
+      version: String(value.version || ''),
+      pageNumber: Number(value.pageNumber || 0),
+      text: String(value.text || ''),
+    };
+  }).filter((page) => page.catalogId && page.pageNumber > 0);
 }
 
 export async function fetchFirebasePdfSearchIndex(
@@ -477,20 +802,26 @@ export async function fetchFirebasePdfSearchIndex(
 }
 
 export async function cleanupPdfSearchIndex(id: string, keepVersion: string) {
-  const snapshot = await getDocs(collection(db, 'pdfSearchIndexes', id, 'pages'));
-  await Promise.all(
-    snapshot.docs
+  const [snapshot, globalSnapshot] = await Promise.all([
+    getDocs(collection(db, 'pdfSearchIndexes', id, 'pages')),
+    getDocs(query(collection(db, 'catalogSearchPages'), where('catalogId', '==', id))),
+  ]);
+  await deleteDocumentRefsInGroups(
+    [...snapshot.docs, ...globalSnapshot.docs]
       .filter((item) => item.data().version !== keepVersion)
-      .map((item) => deleteDoc(item.ref)),
+      .map((item) => item.ref),
   );
 }
 
 export async function discardPdfSearchIndexVersion(id: string, version: string) {
-  const snapshot = await getDocs(collection(db, 'pdfSearchIndexes', id, 'pages'));
-  await Promise.all(
-    snapshot.docs
+  const [snapshot, globalSnapshot] = await Promise.all([
+    getDocs(collection(db, 'pdfSearchIndexes', id, 'pages')),
+    getDocs(query(collection(db, 'catalogSearchPages'), where('catalogId', '==', id))),
+  ]);
+  await deleteDocumentRefsInGroups(
+    [...snapshot.docs, ...globalSnapshot.docs]
       .filter((item) => item.data().version === version)
-      .map((item) => deleteDoc(item.ref)),
+      .map((item) => item.ref),
   );
 }
 
@@ -502,46 +833,49 @@ export async function uploadPdfToFirestore(
   if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
     throw new Error('Solo se permiten archivos PDF.');
   }
-  if (file.size > 35 * 1024 * 1024) {
-    throw new Error('El PDF supera el límite operativo de 35 MB.');
-  }
-
   const bytes = new Uint8Array(await file.arrayBuffer());
   const sha256 = await sha256Hex(bytes);
   const chunkCount = Math.ceil(bytes.length / PDF_CHUNK_BYTES);
   const version = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
 
-  for (let start = 0; start < chunkCount; start += 4) {
-    const group = Array.from(
-      { length: Math.min(4, chunkCount - start) },
-      (_, offset) => start + offset,
-    );
-    await Promise.all(group.map((index) => {
-      const from = index * PDF_CHUNK_BYTES;
-      const to = Math.min(from + PDF_CHUNK_BYTES, bytes.length);
-      return setDoc(doc(db, 'pdfFiles', id, 'chunks', `${version}-${String(index).padStart(5, '0')}`), {
-        index,
-        version,
-        data: Bytes.fromUint8Array(bytes.slice(from, to)),
-      });
-    }));
-    onProgress?.(Math.round((Math.min(start + group.length, chunkCount) / chunkCount) * 100));
-  }
+  try {
+    // Upload several independent Firestore chunks together. Eight concurrent
+    // writes reduces round trips without creating an excessive request burst.
+    for (let start = 0; start < chunkCount; start += 8) {
+      const group = Array.from(
+        { length: Math.min(8, chunkCount - start) },
+        (_, offset) => start + offset,
+      );
+      await Promise.all(group.map((index) => {
+        const from = index * PDF_CHUNK_BYTES;
+        const to = Math.min(from + PDF_CHUNK_BYTES, bytes.length);
+        return setDoc(doc(db, 'pdfFiles', id, 'chunks', `${version}-${String(index).padStart(5, '0')}`), {
+          index,
+          version,
+          data: Bytes.fromUint8Array(bytes.slice(from, to)),
+        });
+      }));
+      onProgress?.(Math.round((Math.min(start + group.length, chunkCount) / chunkCount) * 100));
+    }
 
-  await setDoc(doc(db, 'pdfFiles', id, 'versions', version), {
-    fileName: file.name,
-    mimeType: 'application/pdf',
-    size: file.size,
-    chunkCount,
-    version,
-    sha256,
-    updatedAt: serverTimestamp(),
-  });
-  return {
-    url: `firestore-pdf://${id}?version=${encodeURIComponent(version)}`,
-    version,
-    chunkCount,
-  };
+    await setDoc(doc(db, 'pdfFiles', id, 'versions', version), {
+      fileName: file.name,
+      mimeType: 'application/pdf',
+      size: file.size,
+      chunkCount,
+      version,
+      sha256,
+      updatedAt: serverTimestamp(),
+    });
+    return {
+      url: `firestore-pdf://${id}?version=${encodeURIComponent(version)}`,
+      version,
+      chunkCount,
+    };
+  } catch (error) {
+    await discardPdfVersion(id, version).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function finalizePdfVersion(id: string, version: string) {
@@ -656,32 +990,88 @@ function fileToBase64(file: Blob): Promise<string> {
   });
 }
 
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = 45_000,
+) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 export async function uploadFileToDrive(
   file: File,
   kind: DriveFileKind,
+  onProgress?: (progress: number) => void,
 ): Promise<DriveUploadResult> {
   const mimeType = kind === 'catalogs'
     ? 'application/pdf'
     : file.type || 'application/octet-stream';
+  const uploadKey = crypto.randomUUID();
   const started = await callDriveBridge({
     action: 'uploadInit',
     kind,
     fileName: file.name,
     mimeType,
     size: file.size,
+    uploadKey,
   });
   const chunkSize = Number(started.chunkSize || 1536 * 1024);
   let result: Record<string, any> | null = null;
-  for (let from = 0; from < file.size; from += chunkSize) {
+  let from = 0;
+  let recoveries = 0;
+  let stalledResponses = 0;
+  onProgress?.(0);
+  while (from < file.size) {
     const part = file.slice(from, Math.min(from + chunkSize, file.size));
-    result = await callDriveBridge({
-      action: 'uploadChunk',
-      uploadUrl: started.uploadUrl,
-      from,
-      total: file.size,
-      mimeType,
-      base64: await fileToBase64(part),
-    });
+    try {
+      result = await callDriveBridge({
+        action: 'uploadChunk',
+        uploadUrl: started.uploadUrl,
+        from,
+        total: file.size,
+        mimeType,
+        base64: await fileToBase64(part),
+        sessionToken: started.sessionToken,
+        sessionExpires: started.sessionExpires,
+      });
+      recoveries = 0;
+    } catch (chunkError) {
+      if (recoveries >= 4) throw chunkError;
+      recoveries += 1;
+      result = await callDriveBridge({
+        action: 'uploadStatus',
+        uploadUrl: started.uploadUrl,
+        uploadKey: started.uploadKey || uploadKey,
+        total: file.size,
+        mimeType,
+        sessionToken: started.sessionToken,
+        sessionExpires: started.sessionExpires,
+      });
+    }
+    if (result?.complete && result.fileId) return result as DriveUploadResult;
+    const nextOffset = Number(result?.nextOffset);
+    if (!Number.isInteger(nextOffset) || nextOffset < 0 || nextOffset > file.size) {
+      throw new Error('Drive devolvió un avance de subida inválido.');
+    }
+    if (nextOffset === from && part.size > 0) {
+      // The status endpoint can legitimately report zero before Drive accepts
+      // the first block. Permit a few resends without allowing an infinite
+      // loop when a resumable session stops advancing.
+      stalledResponses += 1;
+      if (stalledResponses > 5) {
+        throw new Error('La subida a Drive dejó de avanzar. Vuelve a intentarlo; el archivo temporal se limpiará automáticamente.');
+      }
+      continue;
+    }
+    stalledResponses = 0;
+    from = nextOffset;
+    onProgress?.(Math.round((Math.min(from, file.size) / file.size) * 100));
   }
   if (!result?.complete || !result.fileId) throw new Error('Drive no completó la subida.');
   return result as DriveUploadResult;
@@ -696,37 +1086,109 @@ async function callDriveBridge(payload: Record<string, unknown>) {
   }
   if (!bridgeUrl) throw new Error('El puente de Google Drive no está configurado.');
 
-  const response = await fetch(bridgeUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      ...payload,
-      firebaseToken: await user.getIdToken(),
-    }),
+  const body = JSON.stringify({
+    ...payload,
+    firebaseToken: await user.getIdToken(),
   });
-  const result = await response.json().catch(() => null);
-  if (!response.ok || !result?.ok) {
-    throw new Error(result?.error || 'Google Drive rechazó la operación.');
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(bridgeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body,
+      }, 45_000);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 4) {
+        await new Promise((resolve) => window.setTimeout(resolve, 600 * (attempt + 1)));
+      }
+      continue;
+    }
+    const result = await response.json().catch(() => null);
+    if (response.ok && result?.ok) return result;
+    const errorMessage = String(result?.error || '');
+    const retryableMessage = /temporar|timeout|tiempo de espera|rate limit|demasiadas solicitudes|service invoked too many times|internal error|try again/i.test(errorMessage);
+    const retryable = (
+      (!result && (
+        response.status === 404 ||
+        response.status === 408 ||
+        response.status === 429 ||
+        response.status >= 500
+      )) ||
+      Boolean(result && retryableMessage)
+    );
+    if (!retryable) {
+      throw new Error(result?.error || 'Google Drive rechazó la operación.');
+    }
+    lastError = new Error(`Google Drive respondió ${response.status}.`);
+    if (attempt < 4) {
+      await new Promise((resolve) => window.setTimeout(resolve, 600 * (attempt + 1)));
+    }
   }
-  return result;
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Google Drive no respondió después de varios intentos.');
 }
 
-export async function downloadFileFromDrive(fileId: string, fileName = 'catalogo.pdf') {
+export async function listDriveCatalogFiles(): Promise<DriveCatalogFile[]> {
+  const result = await callDriveBridge({ action: 'listCatalogs' });
+  if (!Array.isArray(result.files)) throw new Error('Google Drive no devolvió la lista de PDFs.');
+  return result.files
+    .map((item: Record<string, unknown>) => ({
+      fileId: String(item.fileId || ''),
+      fileName: String(item.fileName || 'catalogo.pdf'),
+      mimeType: String(item.mimeType || 'application/pdf'),
+      size: Number(item.size || 0),
+      createdAt: String(item.createdAt || ''),
+      updatedAt: String(item.updatedAt || ''),
+      driveUrl: String(item.driveUrl || ''),
+      previewUrl: String(item.previewUrl || ''),
+      downloadUrl: String(item.downloadUrl || ''),
+      md5Checksum: String(item.md5Checksum || ''),
+    }))
+    .filter((item: DriveCatalogFile) => Boolean(item.fileId));
+}
+
+export async function downloadFileFromDrive(
+  fileId: string,
+  fileName = 'catalogo.pdf',
+  onProgress?: (progress: number) => void,
+) {
   const info = await callDriveBridge({ action: 'downloadInfo', fileId });
   const parts: Uint8Array[] = [];
   let total = 0;
-  for (let index = 0; index < Number(info.chunkCount || 0); index++) {
-    const result = await callDriveBridge({ action: 'downloadChunk', fileId, index });
-    const binary = atob(String(result.base64 || ''));
-    const part = new Uint8Array(binary.length);
-    for (let offset = 0; offset < binary.length; offset++) {
-      part[offset] = binary.charCodeAt(offset);
-    }
-    parts.push(part);
-    total += part.length;
+  const chunkCount = Number(info.chunkCount || 0);
+  for (let start = 0; start < chunkCount; start += 4) {
+    const indexes = Array.from(
+      { length: Math.min(4, chunkCount - start) },
+      (_, offset) => start + offset,
+    );
+    const results = await Promise.all(indexes.map((index) =>
+      callDriveBridge({
+        action: 'downloadChunk',
+        fileId,
+        index,
+        total: Number(info.size || 0),
+        sessionToken: info.sessionToken,
+        sessionExpires: info.sessionExpires,
+      })));
+    results.forEach((result, offset) => {
+      const binary = atob(String(result.base64 || ''));
+      const part = new Uint8Array(binary.length);
+      for (let byte = 0; byte < binary.length; byte++) part[byte] = binary.charCodeAt(byte);
+      parts[indexes[offset]] = part;
+      total += part.length;
+    });
+    onProgress?.(Math.round((Math.min(start + indexes.length, chunkCount) / Math.max(chunkCount, 1)) * 100));
   }
   if (!total || total !== Number(info.size || 0)) {
     throw new Error('El respaldo de Drive está incompleto.');
+  }
+  const signature = new TextDecoder('ascii').decode(parts[0]?.slice(0, 5));
+  if (signature !== '%PDF-') {
+    throw new Error('El respaldo de Drive no contiene un PDF válido.');
   }
   return new File(parts, fileName || String(info.fileName || 'catalogo.pdf'), {
     type: String(info.mimeType || 'application/pdf'),
@@ -737,7 +1199,11 @@ export async function loadPublicDrivePdf(downloadUrl: string): Promise<string> {
   if (!/^https:\/\/(drive|docs)\.google\.com\//i.test(downloadUrl)) {
     throw new Error('El enlace de respaldo no pertenece a Google Drive.');
   }
-  const response = await fetch(downloadUrl, { cache: 'no-store', redirect: 'follow' });
+  const response = await fetchWithTimeout(
+    downloadUrl,
+    { cache: 'no-store', redirect: 'follow' },
+    60_000,
+  );
   if (!response.ok) throw new Error(`Drive respondió ${response.status}.`);
   const bytes = new Uint8Array(await response.arrayBuffer());
   const signature = new TextDecoder('ascii').decode(bytes.slice(0, 5));

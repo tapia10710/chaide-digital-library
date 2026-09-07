@@ -10,38 +10,41 @@ import {
   normalizeCatalogText,
 } from '../lib/catalogCategories';
 import { useStore } from '../store/useStore';
+import { canViewDistributorDocument } from '../lib/distributorAccess';
+import { orderPublicCategories } from '../lib/categoryStructure';
 
 export default function AllCatalogsPage() {
-  const { documents, categories, isLoadingDocs, hasLoadedDocs } = useStore();
+  const { documents, categories, isLoadingDocs, hasLoadedDocs, role } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredDocuments = useMemo(() => {
     const search = normalizeCatalogText(searchTerm.trim());
-    if (!search) return documents;
+    const accessibleDocuments = documents.filter((doc) => canViewDistributorDocument(doc, role));
+    if (!search) return accessibleDocuments;
 
-    return documents.filter((doc) => getDocumentSearchText(doc).includes(search));
-  }, [documents, searchTerm]);
-
-  const categoriesBySlug = useMemo(() => {
-    return new Map(categories.map((category) => [category.slug, category]));
-  }, [categories]);
+    return accessibleDocuments.filter((doc) => getDocumentSearchText(doc).includes(search));
+  }, [documents, role, searchTerm]);
 
   const catalogSections = useMemo(() => {
-    return catalogCategories
-      .filter((category) => categoriesBySlug.get(category.slug)?.active !== false)
-      .map((category) => {
-        const editableCategory = categoriesBySlug.get(category.slug);
-
+    return orderPublicCategories(
+      categories.filter((category) => category.active !== false),
+    )
+      .map((editableCategory) => {
+        const staticCategory = catalogCategories.find((category) => category.slug === editableCategory.slug);
         return {
-          ...category,
-          label: editableCategory?.name || category.label,
-          description: editableCategory?.description ?? category.description,
-          docs: filteredDocuments.filter((doc) => documentMatchesCatalogCategory(doc, category)),
+          ...(staticCategory || { keywords: [] }),
+          slug: editableCategory.slug,
+          label: editableCategory.name,
+          description: editableCategory.description || staticCategory?.description || '',
+          docs: filteredDocuments.filter((doc) => (
+            normalizeCatalogText(doc.category || '') === normalizeCatalogText(editableCategory.name) ||
+            Boolean(staticCategory && documentMatchesCatalogCategory(doc, staticCategory))
+          )),
         };
       });
-  }, [categoriesBySlug, filteredDocuments]);
+  }, [categories, filteredDocuments]);
 
   useEffect(() => {
     if (!location.hash) return;

@@ -53,7 +53,7 @@ export function normalizeCatalogText(value: string) {
     .toLowerCase();
 }
 
-export function getCatalogSectionHref(slug: CatalogCategorySlug) {
+export function getCatalogSectionHref(slug: string) {
   return `/catalogos#${slug}`;
 }
 

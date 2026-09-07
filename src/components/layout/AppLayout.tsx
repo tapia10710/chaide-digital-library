@@ -4,7 +4,9 @@ import SidebarDrawer from './SidebarDrawer';
 import Header from './Header';
 import MobileBottomNav from './MobileBottomNav';
 import CatalogAssistant from '../assistant/CatalogAssistant';
+import DistributorSessionControl from '../access/DistributorSessionControl';
 import { useStore } from '../../store/useStore';
+import { isFirebaseSite } from '../../lib/runtimeConfig';
 
 export default function AppLayout() {
   const requestedCategoriesRef = useRef(false);
@@ -21,7 +23,42 @@ export default function AppLayout() {
     fetchCategories,
     fetchPromotionalBanner,
     hasLoadedPromotionalBanner,
+    syncDocuments,
+    setDocumentsSyncStatus,
   } = useStore();
+
+  useEffect(() => {
+    if (!isFirebaseSite) return undefined;
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
+    setDocumentsSyncStatus('syncing');
+
+    void import('../../lib/firebaseCatalog')
+      .then(({ subscribeFirebaseDocuments }) => subscribeFirebaseDocuments(
+        role === 'admin',
+        (nextDocuments) => {
+          if (!disposed) syncDocuments(nextDocuments);
+        },
+        () => {
+          if (!disposed) setDocumentsSyncStatus('error');
+        },
+      ))
+      .then((stop) => {
+        if (disposed) stop();
+        else unsubscribe = stop;
+      })
+      .catch(() => {
+        if (!disposed) {
+          setDocumentsSyncStatus('error');
+          void fetchDocuments(role === 'admin');
+        }
+      });
+
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
+  }, [role, setDocumentsSyncStatus, syncDocuments]);
 
   useEffect(() => {
     if (!requestedCategoriesRef.current && categories.length === 0) {
@@ -36,6 +73,7 @@ export default function AppLayout() {
 
     const documentsMode = role === 'admin' ? 'admin' : 'public';
     const shouldLoadDocuments =
+      !isFirebaseSite &&
       !isLoadingDocs &&
       !hasLoadedDocs &&
       documents.length === 0 &&
@@ -68,6 +106,7 @@ export default function AppLayout() {
       
       <MobileBottomNav />
       <CatalogAssistant />
+      <DistributorSessionControl />
     </div>
   );
 }

@@ -3,10 +3,10 @@ import { useStore } from "../../store/useStore";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
-  BookOpen,
   Settings,
 } from "lucide-react";
 import { getCategoryIconComponent } from "../../lib/categoryIconRegistry";
+import { orderPublicCategories, splitCategoryMenuLabel } from "../../lib/categoryStructure";
 
 function CategoryIcon({ icon, imageUrl }: { icon?: string, imageUrl?: string }) {
   if (imageUrl) {
@@ -66,20 +66,6 @@ export default function SidebarDrawer() {
             <span>Inicio</span>
           </a>
 
-          <a
-            className={`sidebar-item ${
-              location.pathname === "/catalogos" ? "is-active" : ""
-            }`}
-            href="/catalogos"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate("/catalogos");
-            }}
-          >
-            <BookOpen />
-            <span>Catálogos</span>
-          </a>
-
           {role === 'admin' && (
             <>
               <div className={`sidebar-section-header px-6 mt-6 mb-2 transition-opacity duration-200 ${!isSidebarOpen ? "opacity-0 h-0 my-0 overflow-hidden" : "opacity-100"}`}>
@@ -102,11 +88,12 @@ export default function SidebarDrawer() {
             </>
           )}
 
-          {categories
-            .filter((category) => category.active !== false)
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-            .map((category) => (
-              <a
+          {orderPublicCategories(
+            categories.filter((category) => category.active !== false),
+          )
+            .map((category) => {
+              const labelLines = splitCategoryMenuLabel(category.name);
+              return <a
                 key={category.id}
                 className={`sidebar-item ${
                   location.pathname === `/categoria/${category.slug}`
@@ -120,9 +107,12 @@ export default function SidebarDrawer() {
                 }}
               >
                 <CategoryIcon icon={category.icon} imageUrl={category.imageUrl} />
-                <span>{category.name}</span>
-              </a>
-            ))}
+                <span className="sidebar-category-label">
+                  <span>{labelLines[0]}</span>
+                  <span>{labelLines[1]}</span>
+                </span>
+              </a>;
+            })}
         </nav>
       </aside>
     </>

@@ -55,9 +55,7 @@ export default function Header() {
           </a>
         </div>
 
-        <nav className="library-nav" aria-label="Navegación principal">
-          <a href="/catalogos" onClick={(e) => { e.preventDefault(); navigate('/catalogos'); }}>Catálogos</a>
-        </nav>
+        <div className="library-nav" aria-hidden="true" />
 
         <div className="library-actions">
           {!isSearchPage && (
@@ -98,15 +96,15 @@ export default function Header() {
             </button>
           )}
 
-          {!isStaticSite && <button 
-            onClick={user ? handleLogout : () => navigate('/login')}
+          {!isStaticSite && user && <button 
+            onClick={handleLogout}
             className="user-button"
-            aria-label={user ? "Cerrar sesión" : "Iniciar sesión"}
-            title={user ? "Cerrar sesión" : "Iniciar sesión"}
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
           >
             <div className="flex items-center gap-2">
               <UserIcon size={18} />
-              {user && <span className="text-xs font-medium hidden md:block">Salir ({user.name.split(' ')[0]})</span>}
+              <span className="text-xs font-medium hidden md:block">Salir ({user.name.split(' ')[0]})</span>
             </div>
           </button>}
         </div>

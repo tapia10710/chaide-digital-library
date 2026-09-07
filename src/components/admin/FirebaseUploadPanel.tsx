@@ -1,22 +1,41 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, CloudUpload, FileText, Image as ImageIcon } from 'lucide-react';
 import {
+  deleteDriveFilesReliably,
   deleteFileFromDrive,
   uploadFileToDrive,
 } from '../../lib/firebaseCatalog';
 import { preparePdfCatalog } from '../../lib/catalogSearchIndex';
 import { publishPreparedFirebasePdf } from '../../lib/firebaseCatalogPublication';
 import { useStore } from '../../store/useStore';
+import { findFallbackCategory } from '../../lib/categoryStructure';
 
 export default function FirebaseUploadPanel({
   initialReplaceDocId,
 }: {
   initialReplaceDocId?: string;
 }) {
-  const { categories, documents, addDocument, fetchDocuments } = useStore();
+  const {
+    categories,
+    documents,
+    isLoadingDocs,
+    addDocument,
+    fetchDocuments,
+  } = useStore();
+  const [mode, setMode] = useState<'new' | 'replace'>(
+    initialReplaceDocId ? 'replace' : 'new',
+  );
+  const [replaceTargetId, setReplaceTargetId] = useState(initialReplaceDocId || '');
+  const replaceableDocuments = useMemo(
+    () => [...documents].sort((left, right) =>
+      left.title.localeCompare(right.title, 'es', { sensitivity: 'base' })),
+    [documents],
+  );
   const replaceDocument = useMemo(
-    () => documents.find((item) => item.id === initialReplaceDocId),
-    [documents, initialReplaceDocId],
+    () => mode === 'replace'
+      ? documents.find((item) => item.id === replaceTargetId)
+      : undefined,
+    [documents, mode, replaceTargetId],
   );
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -29,24 +48,49 @@ export default function FirebaseUploadPanel({
   const [message, setMessage] = useState('');
   const missingRequirements = useMemo(() => {
     const missing: string[] = [];
+    if (mode === 'replace' && !replaceDocument) missing.push('catálogo que se reemplazará');
     if (!pdf) missing.push('seleccionar el PDF');
     if (title.trim().length < 3) missing.push('título');
     if (description.trim().length < 10) missing.push('descripción');
     if (!category) missing.push('categoría');
     return missing;
-  }, [pdf, title, description, category]);
+  }, [mode, replaceDocument, pdf, title, description, category]);
+
+  useEffect(() => {
+    if (!initialReplaceDocId) return;
+    setMode('replace');
+    setReplaceTargetId(initialReplaceDocId);
+  }, [initialReplaceDocId]);
 
   useEffect(() => {
     if (!replaceDocument) return;
+    setPdf(null);
+    setCover(null);
     setTitle(replaceDocument.title);
     setDescription(replaceDocument.description || '');
     setCategory(replaceDocument.category || '');
     setTags((replaceDocument.tags || []).join(', '));
     setPublishNow(replaceDocument.visibility !== 'private' && replaceDocument.isActive !== false);
     setMessage(`Reemplazando el PDF de “${replaceDocument.title}”.`);
-  }, [replaceDocument]);
+  }, [replaceDocument?.id]);
 
-  const reset = () => {
+  useEffect(() => {
+    if (mode !== 'new' || category || categories.length === 0) return;
+    const fallback = findFallbackCategory(categories.filter((item) => item.active !== false));
+    if (fallback) setCategory(fallback.name);
+  }, [categories, category, mode]);
+
+  useEffect(() => {
+    if (!isUploading) return undefined;
+    const preventAccidentalExit = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', preventAccidentalExit);
+    return () => window.removeEventListener('beforeunload', preventAccidentalExit);
+  }, [isUploading]);
+
+  const clearFormFields = () => {
     setTitle('');
     setDescription('');
     setCategory('');
@@ -56,8 +100,41 @@ export default function FirebaseUploadPanel({
     setPublishNow(false);
   };
 
+  const reset = () => {
+    clearFormFields();
+    setMode('new');
+    setReplaceTargetId('');
+  };
+
+  const changeMode = (nextMode: 'new' | 'replace') => {
+    if (isUploading || nextMode === mode) return;
+    clearFormFields();
+    setMode(nextMode);
+    setReplaceTargetId('');
+    setMessage(
+      nextMode === 'replace'
+        ? 'Selecciona el catálogo cuyo PDF deseas reemplazar.'
+        : 'Selecciona un PDF para crear un catálogo nuevo.',
+    );
+  };
+
+  const changeReplaceTarget = (id: string) => {
+    if (isUploading) return;
+    clearFormFields();
+    setReplaceTargetId(id);
+    setMessage(
+      id
+        ? 'Cargando la información del catálogo seleccionado…'
+        : 'Selecciona el catálogo que deseas reemplazar.',
+    );
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (mode === 'replace' && !replaceDocument) {
+      setMessage('Selecciona primero el catálogo que deseas reemplazar.');
+      return;
+    }
     if (!pdf) {
       setMessage('Selecciona primero el archivo PDF que deseas publicar.');
       return;
@@ -78,11 +155,6 @@ export default function FirebaseUploadPanel({
       setMessage('Selecciona un archivo PDF válido.');
       return;
     }
-    if (pdf.size > 35 * 1024 * 1024) {
-      setMessage('El PDF supera el límite de 35 MB del puente gratuito.');
-      return;
-    }
-
     setIsUploading(true);
     setMessage('Preparando el PDF para el visor integrado…');
     let newDriveFileId = '';
@@ -90,12 +162,27 @@ export default function FirebaseUploadPanel({
     let publicationCommitted = false;
     try {
       const id = replaceDocument?.id || `doc-${Date.now().toString(36)}`;
-      const prepared = await preparePdfCatalog(pdf, (progress) => {
-        setMessage(`Validando páginas y texto del PDF… ${progress}%`);
-      });
-      setMessage('Creando respaldo en Google Drive…');
-      const driveBackup = await uploadFileToDrive(pdf, 'catalogs');
-      newDriveFileId = driveBackup.fileId;
+      setMessage('Procesando el PDF y copiándolo a Drive en paralelo…');
+      let preparationProgress = 0;
+      let driveProgress = 0;
+      const reportParallelProgress = () => {
+        setMessage(`Preparando visor: ${preparationProgress}% · Respaldo en Drive: ${driveProgress}%`);
+      };
+      const [preparedResult, driveResult] = await Promise.allSettled([
+        preparePdfCatalog(pdf, (progress) => {
+          preparationProgress = progress;
+          reportParallelProgress();
+        }),
+        uploadFileToDrive(pdf, 'catalogs', (progress) => {
+          driveProgress = progress;
+          reportParallelProgress();
+        }),
+      ]);
+      if (driveResult.status === 'fulfilled') newDriveFileId = driveResult.value.fileId;
+      if (preparedResult.status === 'rejected') throw preparedResult.reason;
+      if (driveResult.status === 'rejected') throw driveResult.reason;
+      const prepared = preparedResult.value;
+      const driveBackup = driveResult.value;
       const coverToUpload = cover || prepared.generatedCover;
       setMessage(cover ? 'Guardando portada seleccionada…' : 'Generando y guardando portada automática…');
       const coverResult = coverToUpload ? await uploadFileToDrive(coverToUpload, 'covers') : null;
@@ -111,6 +198,13 @@ export default function FirebaseUploadPanel({
         coverFileId: coverResult?.fileId || replaceDocument?.coverFileId || '',
         externalUrl: driveBackup.downloadUrl,
         driveFileId: driveBackup.fileId,
+        driveMd5Checksum: driveBackup.md5Checksum || '',
+        driveHistoricalFileIds: replaceDocument
+          ? Array.from(new Set([
+              ...(replaceDocument.driveHistoricalFileIds || []),
+              replaceDocument.driveFileId || '',
+            ].filter(Boolean)))
+          : [],
         driveBackupStatus: 'ready' as const,
         fileSize: prepared.viewerFile.size,
         viewerOptimization: prepared.viewerOptimization,
@@ -142,13 +236,27 @@ export default function FirebaseUploadPanel({
       };
       publicationCommitted = true;
       if (!replaceDocument) addDocument(publishedValue);
-      await fetchDocuments(true);
-      if (replaceDocument?.driveFileId && replaceDocument.driveFileId !== driveBackup.fileId) {
-        await deleteFileFromDrive(replaceDocument.driveFileId).catch(() => undefined);
+      let refreshWarning = '';
+      try {
+        await fetchDocuments(true);
+      } catch {
+        refreshWarning = ' La publicación quedó guardada; refresca la biblioteca si todavía no aparece en la tabla.';
       }
-      if (replaceDocument?.coverFileId && replaceDocument.coverFileId !== coverResult?.fileId) {
-        await deleteFileFromDrive(replaceDocument.coverFileId).catch(() => undefined);
-      }
+      const obsoleteDriveIds = replaceDocument
+        ? [
+            replaceDocument.driveFileId && replaceDocument.driveFileId !== driveBackup.fileId
+              ? replaceDocument.driveFileId
+              : '',
+            coverResult?.fileId &&
+            replaceDocument.coverFileId &&
+            replaceDocument.coverFileId !== coverResult.fileId
+              ? replaceDocument.coverFileId
+              : '',
+          ].filter(Boolean) as string[]
+        : [];
+      const cleanup = obsoleteDriveIds.length
+        ? await deleteDriveFilesReliably(id, obsoleteDriveIds)
+        : { pending: [] as string[] };
       reset();
       const publicationMessage = publishNow
         ? (replaceDocument ? 'PDF reemplazado y publicado.' : 'Catálogo publicado correctamente.')
@@ -159,7 +267,10 @@ export default function FirebaseUploadPanel({
       const optimizationMessage = prepared.viewerOptimization.mode === 'flattened'
         ? `El visor recibió una copia optimizada (${(prepared.viewerFile.size / 1024 / 1024).toFixed(1)} MB) y Drive conserva el original.`
         : 'El PDF superó el control de rendimiento del visor.';
-      setMessage(`${publicationMessage} ${searchMessage} ${optimizationMessage}`);
+      const cleanupWarning = cleanup.pending.length
+        ? ' La versión nueva está segura; la limpieza anterior se reintentará automáticamente.'
+        : '';
+      setMessage(`${publicationMessage} ${searchMessage} ${optimizationMessage}${cleanupWarning}${refreshWarning}`);
     } catch (error) {
       if (!publicationCommitted) {
         await Promise.allSettled([
@@ -192,15 +303,104 @@ export default function FirebaseUploadPanel({
   };
 
   return (
-    <section className="bg-[#111827] border border-white/10 rounded-2xl p-6 text-white">
+    <section
+      id="admin-pdf-operation-panel"
+      className="bg-[#111827] border border-white/10 rounded-2xl p-6 text-white scroll-mt-24"
+    >
       <div className="flex items-center gap-3 mb-5">
         <CloudUpload className="w-6 h-6 text-blue-400" />
         <div>
           <h2 className="font-semibold text-lg">
-            {replaceDocument ? 'Reemplazar catálogo' : 'Publicar catálogo'}
+            {mode === 'replace' ? 'Reemplazar catálogo' : 'Publicar catálogo'}
           </h2>
-          <p className="text-xs text-gray-400">PDF para el visor en Firestore y respaldo adicional en Drive.</p>
+          <p className="text-xs text-gray-400">
+            {mode === 'replace'
+              ? 'Actualiza el PDF, la portada y el índice conservando el mismo catálogo.'
+              : 'PDF para el visor en Firestore y respaldo adicional en Drive.'}
+          </p>
         </div>
+      </div>
+
+      <div className="mb-5 rounded-2xl border border-blue-400/20 bg-blue-500/[0.07] p-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-200">
+              Operación
+            </span>
+            <select
+              value={mode}
+              disabled={isUploading}
+              onChange={(event) => changeMode(event.target.value as 'new' | 'replace')}
+              className="min-h-12 rounded-xl border border-white/10 bg-[#0B0F19] px-4 py-3 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-50"
+              aria-label="Elegir entre subir un PDF nuevo o reemplazar uno existente"
+            >
+              <option value="new">Subir PDF nuevo</option>
+              <option value="replace">Reemplazar PDF existente</option>
+            </select>
+          </label>
+
+          {mode === 'replace' ? (
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-200">
+                Catálogo que se reemplazará
+              </span>
+              <select
+                value={replaceTargetId}
+                disabled={isUploading || isLoadingDocs || replaceableDocuments.length === 0}
+                onChange={(event) => changeReplaceTarget(event.target.value)}
+                className="min-h-12 rounded-xl border border-white/10 bg-[#0B0F19] px-4 py-3 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-50"
+                aria-label="Seleccionar el catálogo que se reemplazará"
+              >
+                <option value="">
+                  {isLoadingDocs
+                    ? 'Cargando catálogos…'
+                    : replaceableDocuments.length
+                      ? 'Seleccionar catálogo'
+                      : 'No hay catálogos disponibles'}
+                </option>
+                {replaceableDocuments.map((document) => (
+                  <option key={document.id} value={document.id}>
+                    {document.title} · {document.pageCount || 0} páginas
+                    {document.visibility === 'private' || document.isActive === false
+                      ? ' · borrador'
+                      : ' · publicado'}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="flex items-end">
+              <p className="pb-3 text-sm text-gray-300">
+                Se creará una publicación nueva sin modificar los catálogos existentes.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {mode === 'replace' && replaceDocument ? (
+          <div className="mt-4 flex items-center gap-4 rounded-xl border border-white/10 bg-black/20 p-3">
+            {replaceDocument.coverUrl ? (
+              <img
+                src={replaceDocument.coverUrl}
+                alt=""
+                className="h-20 w-14 shrink-0 rounded-md object-cover shadow-lg"
+              />
+            ) : (
+              <div className="grid h-20 w-14 shrink-0 place-items-center rounded-md bg-white/5">
+                <FileText className="h-5 w-5 text-gray-500" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <strong className="block truncate text-sm text-white">{replaceDocument.title}</strong>
+              <span className="mt-1 block text-xs text-gray-400">
+                {replaceDocument.pageCount || 0} páginas · {replaceDocument.category || 'Sin categoría'}
+              </span>
+              <span className="mt-2 block text-xs text-amber-200">
+                El nuevo PDF, portada e índice sustituirán esta versión después de validarse.
+              </span>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -211,11 +411,18 @@ export default function FirebaseUploadPanel({
           className="bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3"
         />
         <select
+          aria-label="Categoría del catálogo"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
           className="bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3"
         >
           <option value="">Seleccionar categoría</option>
+          {category && !categories.some((item) =>
+            item.active !== false &&
+            item.name.localeCompare(category, 'es', { sensitivity: 'base' }) === 0
+          ) ? (
+            <option value={category}>{category} (categoría actual)</option>
+          ) : null}
           {categories
             .filter((item) => item.active !== false)
             .map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
@@ -232,10 +439,27 @@ export default function FirebaseUploadPanel({
           placeholder="Etiquetas separadas por coma: colchones, hoteles, descanso"
           className="lg:col-span-2 bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3"
         />
-        <label className="flex items-center gap-3 bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3 cursor-pointer">
+        <label
+          className={`flex items-center gap-3 bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3 cursor-pointer ${
+            mode === 'replace' && !replaceDocument ? 'pointer-events-none opacity-45' : ''
+          }`}
+        >
           <FileText className="w-5 h-5 text-red-400" />
-          <span className="text-sm truncate">{pdf?.name || 'Seleccionar PDF (máximo 35 MB)'}</span>
-          <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => selectPdf(event.target.files?.[0] || null)} />
+          <span className="text-sm truncate">
+            {pdf?.name || (
+              mode === 'replace' && !replaceDocument
+                ? 'Primero selecciona el catálogo'
+                : 'Seleccionar PDF (sin límite definido por la aplicación)'
+            )}
+          </span>
+          <input
+            key={`pdf-${mode}-${replaceTargetId}`}
+            type="file"
+            accept="application/pdf,.pdf"
+            disabled={mode === 'replace' && !replaceDocument}
+            className="hidden"
+            onChange={(event) => selectPdf(event.target.files?.[0] || null)}
+          />
         </label>
         <label className="lg:col-span-2 flex items-start gap-3 bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3 cursor-pointer">
           <input
@@ -254,7 +478,13 @@ export default function FirebaseUploadPanel({
         <label className="flex items-center gap-3 bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3 cursor-pointer">
           <ImageIcon className="w-5 h-5 text-emerald-400" />
           <span className="text-sm truncate">{cover?.name || 'Portada opcional'}</span>
-          <input type="file" accept="image/*" className="hidden" onChange={(event) => setCover(event.target.files?.[0] || null)} />
+          <input
+            key={`cover-${mode}-${replaceTargetId}`}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(event) => setCover(event.target.files?.[0] || null)}
+          />
         </label>
         <div className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -272,11 +502,13 @@ export default function FirebaseUploadPanel({
           </div>
           <button
             type="submit"
-            disabled={isUploading}
+            disabled={isUploading || (mode === 'replace' && !replaceDocument)}
             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-5 py-3 rounded-xl font-semibold"
           >
             {isUploading
               ? 'Publicando…'
+              : mode === 'replace' && !replaceDocument
+                ? 'Selecciona un catálogo'
               : replaceDocument
                 ? 'Reemplazar PDF'
                 : missingRequirements.length

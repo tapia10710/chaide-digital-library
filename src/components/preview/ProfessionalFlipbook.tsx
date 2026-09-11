@@ -1523,7 +1523,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     const searchTimer = targetSearch
       ? window.setTimeout(() => {
           setSearchQuery(targetSearch);
-          void performSearch(targetSearch, targetPage);
+          void performSearch(targetSearch, targetPage, false);
           setSearchOpen(true);
         }, 380)
       : null;
@@ -1606,7 +1606,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   }, []);
 
   // Search logic
-  const performSearch = useCallback(async (query: string, preferredPage?: number) => {
+  const performSearch = useCallback(async (query: string, preferredPage?: number, navigateToMatch = true) => {
     if (!pdf || query.trim().length < 2) {
       setSearchResults([]);
       setActiveMatchIndex(-1);
@@ -1810,6 +1810,10 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       
       const definitiveIdx = targetIdx !== -1 ? targetIdx : 0;
       setActiveMatchIndex(definitiveIdx);
+
+      // Opening a search link already navigated to its requested page. Loading
+      // or refreshing matches must never pull the reader back to that page.
+      if (!navigateToMatch) return results;
       
       const targetPage = results[definitiveIdx].pageNumber;
       
@@ -1852,7 +1856,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       searchResults.length > 0
     ) return;
     const retryTimer = window.setTimeout(() => {
-      void performSearch(String(initialSearch), initialPage);
+      void performSearch(String(initialSearch), initialPage, false);
     }, 0);
     return () => window.clearTimeout(retryTimer);
   }, [readyToRender, pdf, initialSearch, initialPage, indexItems, searchResults.length, performSearch]);

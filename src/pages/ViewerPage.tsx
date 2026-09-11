@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import PdfViewer from '../components/preview/PdfViewer';
@@ -12,9 +12,18 @@ export default function ViewerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const requestedPage = Number.parseInt(searchParams.get('page') || '1', 10);
+  // URL writes from page turns save the reading position, not a new search
+  // destination. Keep the incoming target stable until an external navigation.
+  const reportedLocation = useRef('');
+  const incomingLocation = useRef({ id, query: searchParams.toString() });
+  const locationKey = `${id}?${searchParams.toString()}`;
+  if (locationKey !== reportedLocation.current) {
+    incomingLocation.current = { id, query: searchParams.toString() };
+  }
+  const incomingParams = new URLSearchParams(incomingLocation.current.query);
+  const requestedPage = Number.parseInt(incomingParams.get('page') || '1', 10);
   const initialPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const initialSearch = searchParams.get('search') || '';
+  const initialSearch = incomingParams.get('search') || '';
   const { documents, fetchDocuments, isLoadingDocs, hasLoadedDocs, role } = useStore();
   const [distributorAccessRevision, setDistributorAccessRevision] = useState(0);
   const [directDocument, setDirectDocument] = useState<DocumentDef | null>(null);
@@ -33,9 +42,10 @@ export default function ViewerPage() {
       if (current.get('page') === value) return current;
       const next = new URLSearchParams(current);
       next.set('page', value);
+      reportedLocation.current = `${id}?${next.toString()}`;
       return next;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, [id, setSearchParams]);
 
   useEffect(() => {
     if (!hasLoadedDocs && !isLoadingDocs) {

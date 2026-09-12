@@ -2463,16 +2463,6 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
               >
                 <SearchIcon className="w-5 h-5" />
               </button>
-              {zoom > 1 && (
-                <button 
-                  onClick={resetZoom} 
-                  title="Restablecer" 
-                  aria-label="Restablecer zoom"
-                  className="pdf-toolbar-action--reset bg-gray-100 text-blue-600 rounded-full"
-                >
-                  <Minimize2 className="w-5 h-5" />
-                </button>
-              )}
               <button
                 onClick={zoomOut}
                 className="pdf-toolbar-action--zoom-out"
@@ -2518,6 +2508,22 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
             onPointerCancel={handlePointerUp}
             style={{ touchAction: 'none' }}
           >
+            {zoom > 1.01 && (
+              <div className="absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-gray-900 shadow-lg">
+                <span className="shrink-0 text-xs font-semibold tabular-nums" aria-live="polite">
+                  Zoom: {Math.round(zoom * 100)} %
+                </span>
+                <button
+                  type="button"
+                  onClick={resetZoom}
+                  className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gray-100 px-3 text-xs font-semibold hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  aria-label="Volver al tamaño normal, zoom 100 por ciento"
+                >
+                  <Minimize2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span>Volver al tamaño normal</span>
+                </button>
+              </div>
+            )}
             <div className="pdf-book-area">
               {/* BOTONES LATERALES */}
               <button 

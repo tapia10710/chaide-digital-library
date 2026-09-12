@@ -932,7 +932,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const SWIPE_MIN_DISTANCE = 45;
   const SWIPE_MAX_VERTICAL_DRIFT = 35;
   const EDGE_ZONE_RATIO = 0.2;
-  const MAX_ZOOM = 2.5;
+  const MAX_ZOOM = 3.5;
   const MIN_ZOOM = 1;
   const DOUBLE_TAP_ZOOM = 1.8;
 
@@ -1060,7 +1060,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       if (docs.length < 2) return;
       const currentDistance = Math.hypot(docs[0].currentX - docs[1].currentX, docs[0].currentY - docs[1].currentY);
       const scale = currentDistance / initialTouchDistanceRef.current;
-      const newZoom = Math.min(Math.max(initialZoomRef.current * scale, 1), 2.5);
+      const newZoom = Math.min(Math.max(initialZoomRef.current * scale, MIN_ZOOM), MAX_ZOOM);
       setZoom(newZoom);
       if (newZoom <= 1.01) {
         setPan({ x: 0, y: 0 });
@@ -1164,23 +1164,22 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const searchInputRef = useRef<HTMLInputElement>(null);
   
   const toggleZoomAtPoint = useCallback((clientX: number, clientY: number, containerElement: HTMLElement) => {
-    setZoom(prevZoom => {
-      const nextZoom = prevZoom > 1 ? 1 : DOUBLE_TAP_ZOOM;
-      
-      if (nextZoom === 1) {
-        setZoomOrigin({ x: '50%', y: '50%' });
-        setPan({ x: 0, y: 0 });
-      } else {
-        const spreadElement = containerElement.querySelector('.pdf-book-spread') || containerElement.querySelector('.pdf-stage');
-        const rect = spreadElement ? (spreadElement as HTMLElement).getBoundingClientRect() : containerElement.getBoundingClientRect();
-        
-        const originX = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
-        const originY = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
-        setZoomOrigin({ x: `${originX}%`, y: `${originY}%` });
-      }
-      return nextZoom;
-    });
-  }, [DOUBLE_TAP_ZOOM]);
+    const nextZoom = [DOUBLE_TAP_ZOOM, 2.5, MAX_ZOOM].find(level => level > zoom + 0.01);
+    if (!nextZoom) return;
+    const spreadElement = containerElement.querySelector('.pdf-book-spread') || containerElement.querySelector('.pdf-stage');
+    const rect = spreadElement ? (spreadElement as HTMLElement).getBoundingClientRect() : containerElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const originX = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const originY = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+    // Preserve the point under the pointer when changing an already-zoomed
+    // transform origin, including after the reader has dragged the page.
+    setPan(previous => ({
+      x: previous.x + (zoom - 1) * (originX - parseFloat(zoomOrigin.x)) / 100 * rect.width / zoom,
+      y: previous.y + (zoom - 1) * (originY - parseFloat(zoomOrigin.y)) / 100 * rect.height / zoom,
+    }));
+    setZoomOrigin({ x: `${originX}%`, y: `${originY}%` });
+    setZoom(nextZoom);
+  }, [zoom, zoomOrigin, DOUBLE_TAP_ZOOM, MAX_ZOOM]);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -2072,7 +2071,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     return currentPage >= lastSpreadIndex;
   }, [currentPage, dimensions?.isDoublePage, numPages]);
 
-  const zoomIn = () => setZoom(prev => Math.min(prev + 0.25, 2.5));
+  const zoomIn = () => setZoom(prev => Math.min(prev + 0.25, MAX_ZOOM));
   const zoomOut = () => setZoom(prev => Math.max(prev - 0.25, 1));
   const resetZoom = () => {
     setZoom(1);

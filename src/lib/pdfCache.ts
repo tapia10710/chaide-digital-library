@@ -34,7 +34,7 @@ const bitmaps = new Map<string, Map<number, { bitmap: ImageBitmap; w: number; h:
 
 type ProgressFn = (p: { loaded: number; total: number }) => void;
 
-function buildTask(url: string) {
+function buildTask(url: string, highQuality = false) {
   const useNativeImageDecoder = new URL(url, window.location.origin)
     .searchParams.get('fastImageDecoder') === '1';
   return pdfjsLib.getDocument({
@@ -52,6 +52,9 @@ function buildTask(url: string) {
     // Zafiro PDF) otherwise decode several 20-80 MB masks at full resolution
     // even though the visible page needs only a fraction of those pixels.
     canvasMaxAreaInBytes: 12 * 1024 * 1024,
+    // Preserve source image pixels for explicitly selected original-quality PDFs.
+    // Worker-side OffscreenCanvas resizing otherwise discards detail before zoom.
+    ...(highQuality ? { isOffscreenCanvasSupported: false } : {}),
     // Chromium disables ImageDecoder by default in pdf.js because arbitrary
     // PDFs may contain problematic colour profiles. Enable it only for our
     // flattened, standard-RGB web derivative, where native JPEG decoding cuts
@@ -80,7 +83,8 @@ function evict() {
 }
 
 /** Return the already-parsed document if cached (no work), else null. */
-export function getCachedDocument(url: string): pdfjsLib.PDFDocumentProxy | null {
+export function getCachedDocument(url: string, highQuality = false): pdfjsLib.PDFDocumentProxy | null {
+  url = highQuality ? url + '#original-quality' : url;
   const e = documents.get(url);
   if (e?.proxy) {
     e.lastUsed = Date.now();
@@ -90,7 +94,9 @@ export function getCachedDocument(url: string): pdfjsLib.PDFDocumentProxy | null
 }
 
 /** Load (or reuse) a parsed document. Cached docs resolve instantly. */
-export function loadDocument(url: string, onProgress?: ProgressFn): Promise<pdfjsLib.PDFDocumentProxy> {
+export function loadDocument(url: string, onProgress?: ProgressFn, highQuality = false): Promise<pdfjsLib.PDFDocumentProxy> {
+  const sourceUrl = url;
+  url = highQuality ? url + '#original-quality' : url;
   const existing = documents.get(url);
   if (existing) {
     existing.lastUsed = Date.now();
@@ -98,7 +104,7 @@ export function loadDocument(url: string, onProgress?: ProgressFn): Promise<pdfj
     return existing.promise;
   }
 
-  const task = buildTask(url);
+  const task = buildTask(sourceUrl, highQuality);
   if (onProgress) {
     task.onProgress = onProgress as any;
   }
@@ -120,7 +126,8 @@ export function loadDocument(url: string, onProgress?: ProgressFn): Promise<pdfj
   return promise;
 }
 
-export function invalidateDocument(url: string) {
+export function invalidateDocument(url: string, highQuality = false) {
+  url = highQuality ? url + '#original-quality' : url;
   const entry = documents.get(url);
   if (!entry) return;
   documents.delete(url);

@@ -1319,13 +1319,13 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         // Enforce absolute URL for PDF.js loading
         if (!url || typeof url !== 'string') throw new Error("URL de PDF no válida");
         const absoluteUrl = url.startsWith('/') ? window.location.origin + url : url;
-        setDocCacheKey(absoluteUrl);
+        setDocCacheKey(highQualityEnabled ? absoluteUrl + '#original-quality' : absoluteUrl);
         console.log('Iniciando carga de PDF:', absoluteUrl);
 
         // Reuse a previously parsed document if the user already opened this
         // catalog — no re-download, no re-parse. Otherwise load + cache it. The
         // cache survives leaving/returning to the viewer.
-        const cachedNow = getCachedDocument(absoluteUrl);
+        const cachedNow = getCachedDocument(absoluteUrl, highQualityEnabled);
         if (cachedNow) setLoadProgress(100);
 
         let pdfDoc: pdfjsLib.PDFDocumentProxy | null = null;
@@ -1339,15 +1339,15 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                   const percent = Math.round((progress.loaded / progress.total) * 100);
                   if (isMounted) setLoadProgress(percent);
                 }
-              }),
+              }, highQualityEnabled),
               PDF_DOCUMENT_TIMEOUT_MS,
               'El catálogo',
-              () => invalidateDocument(absoluteUrl),
+              () => invalidateDocument(absoluteUrl, highQualityEnabled),
             );
             break;
           } catch (loadError) {
             lastLoadError = loadError;
-            invalidateDocument(absoluteUrl);
+            invalidateDocument(absoluteUrl, highQualityEnabled);
             if (attempt < PDF_DOCUMENT_ATTEMPTS) {
               setLoadProgress(0);
               await waitForRetry(attempt);
@@ -1440,7 +1440,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       // keeps it (and its rendered bitmaps) alive so returning to this catalog
       // is instant. The cache's LRU handles eventual cleanup.
     };
-  }, [documentId, url, reloadToken, clearNavigationLock]);
+  }, [documentId, url, reloadToken, clearNavigationLock, highQualityEnabled]);
 
   // Resize handling
   useEffect(() => {

@@ -14,6 +14,7 @@ export type PreparedPdfCatalog = {
   generatedCover: File | null;
   indexItems: PdfIndexItem[];
   viewerFile: File;
+  originalFile?: File;
   viewerOptimization: ViewerPdfOptimization;
 };
 
@@ -127,6 +128,7 @@ export function shouldOptimizeViewerPdf({
 export async function preparePdfCatalog(
   file: File,
   onProgress?: (progress: number) => void,
+  preserveOriginal = false,
 ): Promise<PreparedPdfCatalog> {
   if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
     throw new Error('El archivo seleccionado no es un PDF.');
@@ -209,7 +211,7 @@ export async function preparePdfCatalog(
     });
     indexItems = index.items;
 
-    const shouldFlatten = shouldOptimizeViewerPdf({
+    const shouldFlatten = !preserveOriginal && shouldOptimizeViewerPdf({
       fileSize: file.size,
       pageCount: pdf.numPages,
       imageOperations,
@@ -231,6 +233,7 @@ export async function preparePdfCatalog(
     generatedCover,
     indexItems,
     viewerFile,
+    originalFile: file,
     viewerOptimization: {
       mode: viewerFile === file ? 'original' : 'flattened',
       originalSize: file.size,

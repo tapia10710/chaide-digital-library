@@ -370,6 +370,7 @@ type QueuedPdfPageElement = HTMLDivElement & {
 };
 
 type QueuedPdfPageProps = {
+  highQuality?: boolean;
   number: number;
   width: number;
   height: number;
@@ -581,10 +582,12 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
           props.width / baseViewport.width,
           props.height / baseViewport.height,
         );
-        const renderScale = Math.min(
-          fitScale * dpr * (props.priority ? Math.max(props.zoom, 1) : 1),
-          props.priority ? 3 : 1.35,
-        );
+        const normalScale = Math.min(fitScale * dpr * (props.priority ? Math.max(props.zoom, 1) : 1), props.priority ? 3 : 1.35);
+        const safetyScale = Math.min(8192 / baseViewport.width, 8192 / baseViewport.height,
+          Math.sqrt(12_000_000 / (baseViewport.width * baseViewport.height)));
+        const renderScale = props.highQuality
+          ? Math.min(Math.max(3, fitScale * dpr * Math.max(props.zoom, 1)), safetyScale)
+          : normalScale;
 
         if (rendered && Math.abs(lastRenderScaleRef.current - renderScale) < 0.001) return;
 
@@ -691,6 +694,7 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
     props.number,
     props.onRendered,
     props.priority,
+    props.highQuality,
     props.width,
     props.zoom,
     renderAttempt,
@@ -778,6 +782,7 @@ const QueuedPdfPage = React.memo(QueuedPdfPageBase, (previous, next) => {
     previous.zoom === next.zoom &&
     previous.eager === next.eager &&
     previous.priority === next.priority &&
+    previous.highQuality === next.highQuality &&
     previous.docUrl === next.docUrl &&
     previous.isActiveMatchPage === next.isActiveMatchPage &&
     highlightsUnchanged
@@ -2266,6 +2271,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
 
     return (
       <QueuedPdfPage
+        highQuality={currentDoc?.highQuality === true && currentDoc.category.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'catalogo de distribuidores'}
         key={key}
         number={pageNumber}
         pdf={pdf}

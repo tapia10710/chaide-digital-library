@@ -9,6 +9,7 @@ import { preparePdfCatalog } from '../../lib/catalogSearchIndex';
 import { publishPreparedFirebasePdf } from '../../lib/firebaseCatalogPublication';
 import { useStore } from '../../store/useStore';
 import { findFallbackCategory } from '../../lib/categoryStructure';
+import { isDistributorCategory } from '../../lib/distributorAccess';
 
 export default function FirebaseUploadPanel({
   initialReplaceDocId,
@@ -40,6 +41,7 @@ export default function FirebaseUploadPanel({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [highQuality, setHighQuality] = useState(false);
   const [tags, setTags] = useState('');
   const [pdf, setPdf] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
@@ -69,6 +71,7 @@ export default function FirebaseUploadPanel({
     setTitle(replaceDocument.title);
     setDescription(replaceDocument.description || '');
     setCategory(replaceDocument.category || '');
+    setHighQuality(replaceDocument.highQuality === true);
     setTags((replaceDocument.tags || []).join(', '));
     setPublishNow(replaceDocument.visibility !== 'private' && replaceDocument.isActive !== false);
     setMessage(`Reemplazando el PDF de “${replaceDocument.title}”.`);
@@ -94,6 +97,7 @@ export default function FirebaseUploadPanel({
     setTitle('');
     setDescription('');
     setCategory('');
+    setHighQuality(false);
     setTags('');
     setPdf(null);
     setCover(null);
@@ -172,7 +176,7 @@ export default function FirebaseUploadPanel({
         preparePdfCatalog(pdf, (progress) => {
           preparationProgress = progress;
           reportParallelProgress();
-        }),
+        }, highQuality && isDistributorCategory(undefined, category)),
         uploadFileToDrive(pdf, 'catalogs', (progress) => {
           driveProgress = progress;
           reportParallelProgress();
@@ -193,6 +197,7 @@ export default function FirebaseUploadPanel({
         title: title.trim(),
         description: description.trim(),
         category,
+        highQuality: highQuality && isDistributorCategory(undefined, category),
         pageCount: prepared.pageCount,
         coverUrl: coverResult?.thumbnailUrl || coverResult?.driveUrl || replaceDocument?.coverUrl || '',
         coverFileId: coverResult?.fileId || replaceDocument?.coverFileId || '',
@@ -410,6 +415,12 @@ export default function FirebaseUploadPanel({
           placeholder="Título del catálogo"
           className="bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3"
         />
+        {isDistributorCategory(undefined, category) && (
+          <label className="flex items-center gap-3 rounded-xl border border-white/20 p-3">
+            <input type="checkbox" checked={highQuality} onChange={event => setHighQuality(event.target.checked)} />
+            <span>Cargar en alta calidad (PDF original; puede tardar más)</span>
+          </label>
+        )}
         <select
           aria-label="Categoría del catálogo"
           value={category}

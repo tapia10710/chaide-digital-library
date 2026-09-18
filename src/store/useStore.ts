@@ -486,7 +486,7 @@ export const useStore = create<AppState>((set, get) => ({
         if (value instanceof File) return;
         if (key === 'pageCount' || key === 'priority') {
           changes[key] = Number(value);
-        } else if (key === 'isActive') {
+        } else if (key === 'isActive' || key === 'highQuality') {
           changes[key] = value === 'true';
         } else {
           changes[key] = value;
@@ -494,6 +494,19 @@ export const useStore = create<AppState>((set, get) => ({
       });
       const cover = formData.get('cover');
       const currentDocument = get().documents.find((item) => item.id === id);
+      const { isDistributorCategory } = await import('../lib/distributorAccess');
+      changes.highQuality = (changes.highQuality ?? currentDocument?.highQuality) === true &&
+        isDistributorCategory(undefined, String(changes.category ?? currentDocument?.category ?? ''));
+      if (changes.highQuality && currentDocument?.viewerOptimization?.mode === 'flattened') {
+        const { downloadFileFromDrive, uploadPdfToFirestore } = await import('../lib/firebaseCatalog');
+        if (!currentDocument.driveFileId) throw new Error('Falta el PDF original en Drive. Reemplaza este documento con el original y marca alta calidad.');
+        const original = await downloadFileFromDrive(currentDocument.driveFileId, currentDocument.title + '.pdf');
+        const storage = await uploadPdfToFirestore(id, original);
+        changes.fileUrl = storage.url;
+        changes.fileSize = original.size;
+        changes.storageVersion = storage.version;
+        changes.viewerOptimization = { ...currentDocument.viewerOptimization, mode: 'original', viewerSize: original.size };
+      }
       let newCoverFileId = '';
       if (cover instanceof File && cover.size) {
         const upload = await uploadFileToDrive(cover, 'covers');
@@ -503,6 +516,10 @@ export const useStore = create<AppState>((set, get) => ({
       }
       try {
         await saveFirebaseDocument(id, changes);
+        if (changes.storageVersion) {
+          const { finalizePdfVersion } = await import('../lib/firebaseCatalog');
+          await finalizePdfVersion(id, String(changes.storageVersion)).catch(() => undefined);
+        }
       } catch (error) {
         if (newCoverFileId) await deleteFileFromDrive(newCoverFileId).catch(() => undefined);
         throw error;

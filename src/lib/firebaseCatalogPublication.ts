@@ -1,4 +1,5 @@
 import type { DocumentDef } from './mockData';
+import { isDistributorDocument } from './distributorAccess';
 import type { PreparedPdfCatalog } from './catalogSearchIndex';
 import { preparePdfCatalog } from './catalogSearchIndex';
 import {
@@ -23,6 +24,10 @@ export async function publishPreparedFirebasePdf(
   document: Partial<DocumentDef>,
   onProgress?: ProgressCallback,
 ) {
+  if (document.highQuality === true && isDistributorDocument(document as DocumentDef) && prepared.originalFile) {
+    prepared.viewerFile = prepared.originalFile;
+    prepared.viewerOptimization = { ...prepared.viewerOptimization, mode: 'original', viewerSize: prepared.originalFile.size };
+  }
   const searchIndexVersion =
     `${Date.now().toString(36)}-${prepared.pageCount}-${crypto.randomUUID().slice(0, 6)}`;
   let storageVersion = '';
@@ -103,7 +108,7 @@ export async function repairFirebaseDocumentFromDrive(
   onProgress?.('Validando todas las páginas y reconstruyendo el índice', 0);
   const prepared = await preparePdfCatalog(file, (progress) => {
     onProgress?.('Validando todas las páginas y reconstruyendo el índice', progress);
-  });
+  }, document.highQuality === true && isDistributorDocument(document));
   let newCoverFileId = '';
   try {
     const cover = prepared.generatedCover

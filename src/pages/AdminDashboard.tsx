@@ -282,7 +282,10 @@ export default function AdminDashboard() {
                   <td className="px-6 py-4">
                     <span className="bg-white/10 px-2 py-1 rounded-md text-xs">{traducirSource(doc.sourceType)}</span>
                   </td>
-                  <td className="px-6 py-4">{doc.pageCount}</td>
+                  <td className="px-6 py-4">{doc.pageCount}
+                    {doc.highQuality === true && doc.category.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'catalogo de distribuidores' &&
+                      <span className="mt-1 block text-xs font-semibold text-blue-400">Alta calidad</span>}
+                  </td>
                   <td className="px-6 py-4">
                     <span className={`flex items-center gap-1.5 text-xs font-medium ${doc.visibility === 'private' || doc.isActive === false ? 'text-amber-400' : doc.status === 'ready' ? 'text-emerald-400' : 'text-blue-400'}`}>
                       <span className={`w-2 h-2 rounded-full ${doc.visibility === 'private' || doc.isActive === false ? 'bg-amber-400' : doc.status === 'ready' ? 'bg-emerald-400' : 'bg-blue-400'} ${doc.status === 'ready' ? '' : 'animate-pulse'}`}></span>

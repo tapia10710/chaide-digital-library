@@ -14,6 +14,7 @@ export interface DocumentDef {
   title: string;
   description: string;
   category: string;
+  highQuality?: boolean;
   pageCount: number;
   coverUrl: string;
   fileUrl: string;

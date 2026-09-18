@@ -2628,13 +2628,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                     style={{ 
                       width: dimensions.bookWidth, 
                       height: dimensions.bookHeight,
-                      // Layout zoom keeps the canvas raster at its final display size,
-                      // instead of stretching a compositor snapshot of the fitted page.
-                      zoom: highQualityEnabled ? zoom : undefined,
-                      flexShrink: highQualityEnabled ? 0 : undefined,
-                      transform: highQualityEnabled
-                        ? `translate(${(pan.x + (0.5 - parseFloat(zoomOrigin.x) / 100) * dimensions.bookWidth * (zoom - 1)) / zoom}px, ${(pan.y + (0.5 - parseFloat(zoomOrigin.y) / 100) * dimensions.bookHeight * (zoom - 1)) / zoom}px)`
-                        : `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+                      transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
                       transformOrigin: `${zoomOrigin.x} ${zoomOrigin.y}`,
                       // A permanently composited layer can enlarge its old low-resolution raster.
                       willChange: highQualityEnabled ? 'auto' : 'transform',

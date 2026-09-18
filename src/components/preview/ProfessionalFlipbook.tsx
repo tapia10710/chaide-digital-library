@@ -370,6 +370,7 @@ type QueuedPdfPageElement = HTMLDivElement & {
 };
 
 type QueuedPdfPageProps = {
+  onQualityChange?: (page: number, improving: boolean) => void;
   highQuality?: boolean;
   number: number;
   width: number;
@@ -386,6 +387,11 @@ type QueuedPdfPageProps = {
 
 const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((props, ref) => {
   const [improvingQuality, setImprovingQuality] = useState(false);
+  useEffect(() => {
+    if (!props.highQuality || !props.priority) return;
+    props.onQualityChange?.(props.number, improvingQuality);
+    return () => props.onQualityChange?.(props.number, false);
+  }, [improvingQuality, props.highQuality, props.priority, props.number, props.onQualityChange]);
   const rootRef = useRef<QueuedPdfPageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
@@ -804,6 +810,7 @@ const QueuedPdfPage = React.memo(QueuedPdfPageBase, (previous, next) => {
     previous.eager === next.eager &&
     previous.priority === next.priority &&
     previous.highQuality === next.highQuality &&
+    previous.onQualityChange === next.onQualityChange &&
     previous.docUrl === next.docUrl &&
     previous.isActiveMatchPage === next.isActiveMatchPage &&
     highlightsUnchanged
@@ -895,6 +902,17 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const currentDoc = useMemo(() => {
     return documents.find((document) => document.id === documentId);
   }, [documentId, documents]);
+  const highQualityEnabled = currentDoc?.highQuality === true &&
+    currentDoc.category.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'catalogo de distribuidores';
+  const [qualityPages, setQualityPages] = useState<Set<number>>(() => new Set());
+  const handleQualityChange = useCallback((page: number, improving: boolean) => {
+    setQualityPages(previous => {
+      if (previous.has(page) === improving) return previous;
+      const next = new Set(previous);
+      if (improving) next.add(page); else next.delete(page);
+      return next;
+    });
+  }, []);
 
   const [pdf, setPdf] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [docCacheKey, setDocCacheKey] = useState<string>('');
@@ -2292,7 +2310,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
 
     return (
       <QueuedPdfPage
-        highQuality={currentDoc?.highQuality === true && currentDoc.category.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'catalogo de distribuidores'}
+        highQuality={highQualityEnabled}
+        onQualityChange={handleQualityChange}
         key={key}
         number={pageNumber}
         pdf={pdf}
@@ -2539,6 +2558,11 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
               <div className="absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-gray-900 shadow-lg">
                 <span className="shrink-0 text-xs font-semibold tabular-nums" aria-live="polite">
                   Zoom: {Math.round(zoom * 100)} %
+                  {highQualityEnabled && (
+                    <span role="status" className="block mt-1 text-[10px] font-normal text-blue-700">
+                      {qualityPages.size > 0 ? 'Mejorando nitidez…' : 'Alta calidad automática'}
+                    </span>
+                  )}
                 </span>
                 <button
                   type="button"
@@ -2606,7 +2630,9 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
                       height: dimensions.bookHeight,
                       transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
                       transformOrigin: `${zoomOrigin.x} ${zoomOrigin.y}`,
-                      transition: isPanning ? 'none' : 'transform 200ms cubic-bezier(0.2, 0, 0.2, 1)'
+                      // A permanently composited layer can enlarge its old low-resolution raster.
+                      willChange: highQualityEnabled ? 'auto' : 'transform',
+                      transition: isPanning || highQualityEnabled ? 'none' : 'transform 200ms cubic-bezier(0.2, 0, 0.2, 1)'
                     }}
                   >
                     {dimensions.isDoublePage ? (

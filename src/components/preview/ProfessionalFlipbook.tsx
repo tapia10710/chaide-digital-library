@@ -385,6 +385,7 @@ type QueuedPdfPageProps = {
 };
 
 const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((props, ref) => {
+  const [improvingQuality, setImprovingQuality] = useState(false);
   const rootRef = useRef<QueuedPdfPageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
@@ -583,16 +584,18 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
           props.height / baseViewport.height,
         );
         const normalScale = Math.min(fitScale * dpr * (props.priority ? Math.max(props.zoom, 1) : 1), props.priority ? 3 : 1.35);
+        const pixelBudget = window.matchMedia('(max-width: 900px)').matches ? 16_000_000 : 24_000_000;
         const safetyScale = Math.min(8192 / baseViewport.width, 8192 / baseViewport.height,
-          Math.sqrt(12_000_000 / (baseViewport.width * baseViewport.height)));
+          Math.sqrt(pixelBudget / (baseViewport.width * baseViewport.height)));
         const renderScale = props.highQuality
-          ? Math.min(Math.max(3, fitScale * dpr * Math.max(props.zoom, 1)), safetyScale)
+          ? Math.min(Math.max(3, fitScale * dpr) * (props.priority ? Math.max(props.zoom, 1) : 1), safetyScale)
           : normalScale;
 
         if (rendered && Math.abs(lastRenderScaleRef.current - renderScale) < 0.001) return;
 
         const viewport = page.getViewport({ scale: renderScale });
-        const canvas = canvasRef.current;
+        // Keep the last complete image visible while refining the original PDF.
+        const canvas = props.highQuality ? document.createElement('canvas') : canvasRef.current;
         const context = canvas.getContext('2d', { alpha: false, desynchronized: true });
         if (!context || !current) return;
 
@@ -606,6 +609,7 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
 
         setRenderError(null);
         isRenderingRef.current = true;
+        if (props.highQuality) setImprovingQuality(true);
         let completed = false;
         let lastError: unknown = null;
 
@@ -641,13 +645,24 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
 
         if (!current) return;
 
+        if (props.highQuality && canvasRef.current) {
+          const visible = canvasRef.current;
+          const visibleContext = visible.getContext('2d', { alpha: false });
+          if (!visibleContext) throw new Error('No se pudo actualizar la página.');
+          visible.width = canvas.width;
+          visible.height = canvas.height;
+          visible.style.width = '100%';
+          visible.style.height = '100%';
+          visible.style.objectFit = 'contain';
+          visibleContext.drawImage(canvas, 0, 0);
+        }
         lastRenderScaleRef.current = renderScale;
         setRendered(true);
         props.onRendered?.(props.number);
         setRenderTry(0);
         recoveryCycleRef.current = 0;
 
-        if (props.docUrl && typeof createImageBitmap === 'function') {
+        if (props.docUrl && !(props.highQuality && props.zoom > 1) && typeof createImageBitmap === 'function') {
           const width = canvas.width;
           const height = canvas.height;
           void createImageBitmap(canvas)
@@ -670,6 +685,7 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
           }
         }
       } finally {
+        if (current) setImprovingQuality(false);
         isRenderingRef.current = false;
         if (useLimiter) releaseRenderSlot();
       }
@@ -709,6 +725,11 @@ const QueuedPdfPageBase = React.forwardRef<HTMLDivElement, QueuedPdfPageProps>((
       data-pdf-page={props.number}
       data-pdf-rendered={rendered ? 'true' : 'false'}
     >
+      {props.highQuality && rendered && improvingQuality && (
+        <div role="status" className="absolute top-2 left-2 z-30 rounded bg-white/95 px-3 py-2 text-xs text-blue-800 shadow pointer-events-none">
+          Mejorando nitidez…
+        </div>
+      )}
       {active && renderError ? (
         <div className="absolute inset-0 z-20 flex flex-col gap-3 items-center justify-center bg-red-50/95 px-6 text-center">
           <div className="w-7 h-7 border-2 border-red-200 border-t-red-500 rounded-full animate-spin" />

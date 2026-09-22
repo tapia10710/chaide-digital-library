@@ -5,6 +5,7 @@ import Header from './Header';
 import MobileBottomNav from './MobileBottomNav';
 import CatalogAssistant from '../assistant/CatalogAssistant';
 import DistributorSessionControl from '../access/DistributorSessionControl';
+import CreditSessionControl from '../access/CreditSessionControl';
 import { useStore } from '../../store/useStore';
 import { isFirebaseSite } from '../../lib/runtimeConfig';
 
@@ -107,6 +108,7 @@ export default function AppLayout() {
       <MobileBottomNav />
       <CatalogAssistant />
       <DistributorSessionControl />
+      <CreditSessionControl />
     </div>
   );
 }

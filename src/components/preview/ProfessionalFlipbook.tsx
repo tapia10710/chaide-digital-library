@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
+import { canViewDistributorDocument } from '../../lib/distributorAccess';
 import { formatFileSize, sortPdfDocumentsFirst } from '../../lib/viewerUtils';
 import { getCachedPdfData, setCachedPdfData } from '../../lib/backgroundIndexer';
 import { loadPersistedCatalogSearchIndex } from '../../lib/catalogSearchIndex';
@@ -2893,7 +2894,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       canDownload={!!(url || downloadUrl)}
       pageCount={currentDoc?.pageCount}
       fileSize={currentDoc?.fileSize}
-      relatedDocuments={documents.filter(d => d.title !== title).slice(0, 4)}
+      relatedDocuments={documents.filter(d => d.title !== title && canViewDistributorDocument(d, useStore.getState().role)).slice(0, 4)}
     />
 
       <style dangerouslySetInnerHTML={{ __html: `

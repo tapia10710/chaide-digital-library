@@ -6,6 +6,8 @@ import type { DocumentDef } from '../lib/mockData';
 import { isFirebaseSite } from '../lib/runtimeConfig';
 import DistributorAccessGate from '../components/access/DistributorAccessGate';
 import { hasDistributorAccess, isDistributorDocument } from '../lib/distributorAccess';
+import { hasCreditAccess, isCreditDocument } from '../lib/creditAccess';
+import CreditAccessGate from '../components/access/CreditAccessGate';
 
 export default function ViewerPage() {
   const { id } = useParams();
@@ -72,7 +74,8 @@ export default function ViewerPage() {
 
   useEffect(() => {
     const sourceUrl = doc?.fileUrl || '';
-    if (isDistributorDocument(doc) && role !== 'admin' && !hasDistributorAccess()) {
+    if (role !== 'admin' && ((isDistributorDocument(doc) && !hasDistributorAccess()) ||
+        (isCreditDocument(doc) && !hasCreditAccess()))) {
       setFirebasePdfUrl('');
       setFirebasePdfError('');
       setFirebasePdfProgress(0);
@@ -162,6 +165,9 @@ export default function ViewerPage() {
      );
   }
 
+  if (isCreditDocument(doc) && role !== 'admin' && !hasCreditAccess()) {
+    return <CreditAccessGate onGranted={() => setDistributorAccessRevision(value => value + 1)}><></></CreditAccessGate>;
+  }
   if (isDistributorDocument(doc) && role !== 'admin' && !hasDistributorAccess()) {
     return (
       <DistributorAccessGate onGranted={() => setDistributorAccessRevision((value) => value + 1)}>

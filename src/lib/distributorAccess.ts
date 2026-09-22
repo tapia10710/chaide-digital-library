@@ -1,4 +1,5 @@
 import type { DocumentDef } from './mockData';
+import { isCreditDocument, hasCreditAccess } from './creditAccess';
 
 export const DISTRIBUTOR_CATEGORY_SLUG = 'catalogo-de-distribuidores';
 export const DISTRIBUTOR_CATEGORY_NAME = 'Catálogo de Distribuidores';
@@ -36,6 +37,7 @@ export function canViewDistributorDocument(
   document?: Pick<DocumentDef, 'category'> | null,
   role?: string | null,
 ) {
+  if (isCreditDocument(document)) return role === 'admin' || hasCreditAccess();
   return !isDistributorDocument(document) || role === 'admin' || hasDistributorAccess();
 }
 

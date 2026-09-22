@@ -5,7 +5,9 @@ import { ArrowLeft } from 'lucide-react';
 import PDFCard from '../components/library/PDFCard';
 import { catalogCategories, documentMatchesCatalogCategory } from '../lib/catalogCategories';
 import DistributorAccessGate from '../components/access/DistributorAccessGate';
-import { isDistributorCategory } from '../lib/distributorAccess';
+import { isDistributorCategory, canViewDistributorDocument } from '../lib/distributorAccess';
+import { isCreditCategory } from '../lib/creditAccess';
+import CreditAccessGate from '../components/access/CreditAccessGate';
 
 export default function CategoryPage() {
   const { slug } = useParams();
@@ -18,7 +20,8 @@ export default function CategoryPage() {
   const category = editableCategory || null;
   const catalogos = documents.filter(doc =>
     doc.category === category?.name ||
-    Boolean(staticCategory && documentMatchesCatalogCategory(doc, staticCategory))
+    (canViewDistributorDocument(doc, role) &&
+      Boolean(staticCategory && documentMatchesCatalogCategory(doc, staticCategory)))
   );
 
   if (!category) return <div className="text-[#111] p-8 font-medium">Categoría no encontrada</div>;
@@ -59,6 +62,9 @@ export default function CategoryPage() {
     </main>
   );
 
+  if (isCreditCategory(slug, category.name)) {
+    return <CreditAccessGate bypass={role === 'admin'}>{page}</CreditAccessGate>;
+  }
   if (isDistributorCategory(slug, category.name)) {
     return <DistributorAccessGate bypass={role === 'admin'}>{page}</DistributorAccessGate>;
   }

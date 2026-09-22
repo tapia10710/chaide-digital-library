@@ -22,6 +22,7 @@ let active = 0;
 let maxActive = 0;
 const order = [];
 const saved = [];
+const qualityFlags = [];
 const failed = new Set();
 let releaseFirst;
 const first = new Promise(resolve => { releaseFirst = resolve; });
@@ -35,12 +36,13 @@ const imports = {
   'lucide-react': {},
   '../../store/useStore': { useStore: () => store },
   '../../lib/categoryStructure': { findFallbackCategory: () => store.categories[0] },
-  '../../lib/distributorAccess': { isDistributorCategory: () => false },
+  '../../lib/catalogQuality': { supportsHighQuality: category => category === 'Crédito' },
   '../../lib/firebaseCatalog': {
     async uploadFileToDrive(file) { return { fileId: file.name, downloadUrl: 'test-only' }; },
     async deleteFileFromDrive() {}, async deleteDriveFilesReliably() { return { pending: [] }; },
   },
-  '../../lib/catalogSearchIndex': { async preparePdfCatalog(file) {
+  '../../lib/catalogSearchIndex': { async preparePdfCatalog(file, _progress, highQuality) {
+    qualityFlags.push(highQuality);
     active++; maxActive = Math.max(maxActive, active); order.push(file.name);
     if (file.name === 'uno.pdf') await first;
     active--;
@@ -67,6 +69,8 @@ function enqueue(names) {
   const files = names.map(file);
   find(n => n.type === 'input' && n.props.accept === 'application/pdf,.pdf').props.onChange({ currentTarget: { files }, target: { value: 'selected' } });
   find(n => n.type === 'select' && n.props['aria-label'] === 'Categoría del catálogo').props.onChange(event('Crédito'));
+  find(n => n.type === 'label' && nodes(n).some(child => child.props?.children === 'Cargar en alta calidad (PDF original; puede tardar más)'))
+    .props.children[0].props.onChange({ target: { checked: true } });
   find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
 }
 const queue = () => slots.find(value => Array.isArray(value) && value.some(item => item?.fileName));
@@ -89,5 +93,7 @@ assert.equal(queue().find(item => item.fileName === 'dos.pdf').status, 'error');
 find(n => n.type === 'button' && n.props.children === 'Volver a poner en cola').props.onClick();
 await find(n => n.type === 'button' && n.props.children === 'Iniciar cola').props.onClick();
 assert.equal(saved.length, 4);
+assert.ok(qualityFlags.every(value => value === true), 'Credit preparation preserves original quality');
+assert.ok(saved.every(item => item.highQuality === true), 'Credit quality flag survives queue publication');
 assert.ok(queue().every(item => item.status === 'done'));
 console.log('PASS: multiple selection, deduplication, sequential processing, double start, append while running, failure isolation, retry, metadata and memory release.');

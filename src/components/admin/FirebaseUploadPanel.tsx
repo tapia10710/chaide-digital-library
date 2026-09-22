@@ -9,7 +9,7 @@ import { preparePdfCatalog } from '../../lib/catalogSearchIndex';
 import { publishPreparedFirebasePdf } from '../../lib/firebaseCatalogPublication';
 import { useStore } from '../../store/useStore';
 import { findFallbackCategory } from '../../lib/categoryStructure';
-import { isDistributorCategory } from '../../lib/distributorAccess';
+import { supportsHighQuality } from '../../lib/catalogQuality';
 
 type UploadJob = {
   id: string;
@@ -229,7 +229,7 @@ export default function FirebaseUploadPanel({
         preparePdfCatalog(pdf, (progress) => {
           preparationProgress = progress;
           reportParallelProgress();
-        }, highQuality && isDistributorCategory(undefined, category)),
+        }, highQuality && supportsHighQuality(category)),
         uploadFileToDrive(pdf, 'catalogs', (progress) => {
           driveProgress = progress;
           reportParallelProgress();
@@ -250,7 +250,7 @@ export default function FirebaseUploadPanel({
         title: title.trim(),
         description: description.trim(),
         category,
-        highQuality: highQuality && isDistributorCategory(undefined, category),
+        highQuality: highQuality && supportsHighQuality(category),
         pageCount: prepared.pageCount,
         coverUrl: coverResult?.thumbnailUrl || coverResult?.driveUrl || replaceDocument?.coverUrl || '',
         coverFileId: coverResult?.fileId || replaceDocument?.coverFileId || '',
@@ -487,7 +487,7 @@ export default function FirebaseUploadPanel({
           placeholder="Título del catálogo"
           className="bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3"
         />
-        {isDistributorCategory(undefined, category) && (
+        {supportsHighQuality(category) && (
           <label className="flex items-center gap-3 rounded-xl border border-white/20 p-3">
             <input type="checkbox" checked={highQuality} onChange={event => setHighQuality(event.target.checked)} />
             <span>Cargar en alta calidad (PDF original; puede tardar más)</span>

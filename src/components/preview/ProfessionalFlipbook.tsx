@@ -23,6 +23,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
+import { usesHighQuality } from '../../lib/catalogQuality';
 import { useStore } from '../../store/useStore';
 import { canViewDistributorDocument } from '../../lib/distributorAccess';
 import { formatFileSize, sortPdfDocumentsFirst } from '../../lib/viewerUtils';
@@ -903,8 +904,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const currentDoc = useMemo(() => {
     return documents.find((document) => document.id === documentId);
   }, [documentId, documents]);
-  const highQualityEnabled = currentDoc?.highQuality === true &&
-    currentDoc.category.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'catalogo de distribuidores';
+  const highQualityEnabled = usesHighQuality(currentDoc);
   const [qualityPages, setQualityPages] = useState<Set<number>>(() => new Set());
   const handleQualityChange = useCallback((page: number, improving: boolean) => {
     setQualityPages(previous => {

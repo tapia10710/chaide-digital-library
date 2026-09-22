@@ -494,9 +494,9 @@ export const useStore = create<AppState>((set, get) => ({
       });
       const cover = formData.get('cover');
       const currentDocument = get().documents.find((item) => item.id === id);
-      const { isDistributorCategory } = await import('../lib/distributorAccess');
+      const { supportsHighQuality } = await import('../lib/catalogQuality');
       changes.highQuality = (changes.highQuality ?? currentDocument?.highQuality) === true &&
-        isDistributorCategory(undefined, String(changes.category ?? currentDocument?.category ?? ''));
+        supportsHighQuality(String(changes.category ?? currentDocument?.category ?? ''));
       if (changes.highQuality && currentDocument?.viewerOptimization?.mode === 'flattened') {
         const { downloadFileFromDrive, uploadPdfToFirestore } = await import('../lib/firebaseCatalog');
         if (!currentDocument.driveFileId) throw new Error('Falta el PDF original en Drive. Reemplaza este documento con el original y marca alta calidad.');

@@ -1,5 +1,5 @@
 import type { DocumentDef } from './mockData';
-import { isDistributorDocument } from './distributorAccess';
+import { usesHighQuality } from './catalogQuality';
 import type { PreparedPdfCatalog } from './catalogSearchIndex';
 import { preparePdfCatalog } from './catalogSearchIndex';
 import {
@@ -24,7 +24,7 @@ export async function publishPreparedFirebasePdf(
   document: Partial<DocumentDef>,
   onProgress?: ProgressCallback,
 ) {
-  if (document.highQuality === true && isDistributorDocument(document as DocumentDef) && prepared.originalFile) {
+  if (usesHighQuality(document) && prepared.originalFile) {
     prepared.viewerFile = prepared.originalFile;
     prepared.viewerOptimization = { ...prepared.viewerOptimization, mode: 'original', viewerSize: prepared.originalFile.size };
   }
@@ -108,7 +108,7 @@ export async function repairFirebaseDocumentFromDrive(
   onProgress?.('Validando todas las páginas y reconstruyendo el índice', 0);
   const prepared = await preparePdfCatalog(file, (progress) => {
     onProgress?.('Validando todas las páginas y reconstruyendo el índice', progress);
-  }, document.highQuality === true && isDistributorDocument(document));
+  }, usesHighQuality(document));
   let newCoverFileId = '';
   try {
     const cover = prepared.generatedCover

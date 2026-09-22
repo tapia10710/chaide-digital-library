@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { X, Upload, FileText, Image as ImageIcon } from 'lucide-react';
 import { DocumentDef } from '../../lib/mockData';
 import { useStore } from '../../store/useStore';
-import { isDistributorCategory } from '../../lib/distributorAccess';
+import { supportsHighQuality } from '../../lib/catalogQuality';
 
 interface AdminEditModalProps {
   document: DocumentDef;
@@ -40,7 +40,7 @@ export default function AdminEditModal({ document, onClose }: AdminEditModalProp
     setIsSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('highQuality', String(highQuality && isDistributorCategory(undefined, category)));
+      formData.append('highQuality', String(highQuality && supportsHighQuality(category)));
       if (title !== document.title) formData.append('title', title);
       formData.append('description', description);
       if (category !== document.category) formData.append('category', category);
@@ -120,7 +120,7 @@ export default function AdminEditModal({ document, onClose }: AdminEditModalProp
             </div>
 
             {/* Title */}
-            {isDistributorCategory(undefined, category) && (
+            {supportsHighQuality(category) && (
               <label className="flex items-center gap-3 rounded-xl border border-white/20 p-3 text-white">
                 <input type="checkbox" checked={highQuality} disabled={isSubmitting} onChange={event => setHighQuality(event.target.checked)} />
                 <span>Cargar en alta calidad<br /><small>Usa el PDF original. Guardar puede tardar mientras se recupera de Drive.</small></span>

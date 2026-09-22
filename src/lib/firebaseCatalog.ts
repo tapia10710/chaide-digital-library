@@ -958,18 +958,56 @@ export async function loadPdfFromFirestore(
   } catch {
     // Continue with Firestore when browser storage is unavailable or corrupt.
   }
-  const snapshot = version
-    ? await getDocs(query(
-      collection(db, 'pdfFiles', id, 'chunks'),
-      where('version', '==', version),
-    ))
-    : await getDocs(collection(db, 'pdfFiles', id, 'chunks'));
+  type PdfChunk = { index: number; version?: string; data: Bytes };
+  const expected = Number(manifest.data().chunkCount || 0);
+  let chunks: PdfChunk[] = [];
+  if (version && Number.isSafeInteger(expected) && expected > 0) {
+    // Read bounded independent chunks instead of one giant query response.
+    // Each completed chunk advances real progress and frees a worker immediately.
+    const results: PdfChunk[] = new Array(expected);
+    let nextIndex = 0;
+    let completed = 0;
+    let stopped = false;
+    let legacyLayout = false;
+    await Promise.all(Array.from({ length: Math.min(4, expected) }, async () => {
+      while (!stopped) {
+        const index = nextIndex++;
+        if (index >= expected) return;
+        try {
+          const snapshot = await getDoc(doc(db, 'pdfFiles', id, 'chunks',
+            `${version}-${String(index).padStart(5, '0')}`));
+          if (stopped) return;
+          if (!snapshot.exists()) {
+            legacyLayout = true;
+            stopped = true;
+            return;
+          }
+          const chunk = snapshot.data() as PdfChunk;
+          if (chunk.index !== index || chunk.version !== version) {
+            throw new Error('Un fragmento del PDF no corresponde a la versión solicitada.');
+          }
+          results[index] = chunk;
+          completed++;
+          onProgress?.(15 + Math.floor(70 * completed / expected));
+        } catch (error) {
+          stopped = true;
+          throw error;
+        }
+      }
+    }));
+    if (!legacyLayout) chunks = results;
+  }
+  // Preserve compatibility with older uploads that used different chunk IDs.
+  if (!chunks.length) {
+    const snapshot = version
+      ? await getDocs(query(collection(db, 'pdfFiles', id, 'chunks'), where('version', '==', version)))
+      : await getDocs(collection(db, 'pdfFiles', id, 'chunks'));
+    chunks = snapshot.docs.map((item) => item.data() as PdfChunk);
+  }
   onProgress?.(85);
-  const ordered = snapshot.docs
-    .map((item) => item.data() as { index: number; version?: string; data: Bytes })
+  const ordered = chunks
     .filter((item) => !version || item.version === version)
     .sort((a, b) => a.index - b.index);
-  const expected = Number(manifest.data().chunkCount || 0);
   const hasContiguousChunks = ordered.every((item, index) => item.index === index);
   if (!ordered.length || ordered.length !== expected || !hasContiguousChunks) {
     throw new Error('El PDF está incompleto. Vuelve a publicarlo desde el administrador.');

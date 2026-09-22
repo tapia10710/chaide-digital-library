@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import type { DocumentDef } from './mockData';
+import { createPdfRangeReader, parseFirestorePdfUrl } from './pdfPartialLoading';
 import { buildCatalogSearchTokens } from './catalogSearchTokens';
 import {
   FALLBACK_CATEGORY_ID,
@@ -848,12 +849,13 @@ export async function uploadPdfToFirestore(
         { length: Math.min(8, chunkCount - start) },
         (_, offset) => start + offset,
       );
-      await Promise.all(group.map((index) => {
+      await Promise.all(group.map(async (index) => {
         const from = index * PDF_CHUNK_BYTES;
         const to = Math.min(from + PDF_CHUNK_BYTES, bytes.length);
         return setDoc(doc(db, 'pdfFiles', id, 'chunks', `${version}-${String(index).padStart(5, '0')}`), {
           index,
           version,
+          sha256: await sha256Hex(bytes.subarray(from, to)),
           data: Bytes.fromUint8Array(bytes.slice(from, to)),
         });
       }));
@@ -865,6 +867,8 @@ export async function uploadPdfToFirestore(
       mimeType: 'application/pdf',
       size: file.size,
       chunkCount,
+      chunkSize: PDF_CHUNK_BYTES,
+      chunkHashes: true,
       version,
       sha256,
       updatedAt: serverTimestamp(),
@@ -913,6 +917,37 @@ export async function discardPdfVersion(id: string, version: string) {
       .map((item) => deleteDoc(item.ref)),
   );
   await deleteDoc(doc(db, 'pdfFiles', id, 'versions', version)).catch(() => undefined);
+}
+
+export async function openFirestorePdfRanges(url: string) {
+  const { id, version: requestedVersion } = parseFirestorePdfUrl(url);
+  const snapshot = await getDoc(requestedVersion
+    ? doc(db, 'pdfFiles', id, 'versions', requestedVersion)
+    : doc(db, 'pdfFiles', id));
+  if (!snapshot.exists()) throw new Error('El PDF no está disponible.');
+  const manifest = snapshot.data();
+  const version = requestedVersion || String(manifest.version || '');
+  const size = Number(manifest.size);
+  const chunkSize = Number(manifest.chunkSize || PDF_CHUNK_BYTES);
+  if (!version || !Number.isSafeInteger(size) || size <= 0 ||
+      !Number.isSafeInteger(chunkSize) || chunkSize <= 0 ||
+      Math.ceil(size / chunkSize) !== Number(manifest.chunkCount)) {
+    throw new Error('Este PDF requiere carga completa.');
+  }
+  const reader = createPdfRangeReader(size, chunkSize, async index => {
+    const part = await getDoc(doc(db, 'pdfFiles', id, 'chunks', `${version}-${String(index).padStart(5, '0')}`));
+    if (!part.exists()) throw new Error('Falta un fragmento del PDF.');
+    const value = part.data();
+    if (value.index !== index || value.version !== version || !(value.data instanceof Bytes)) {
+      throw new Error('El fragmento no corresponde a esta versión del PDF.');
+    }
+    const bytes = value.data.toUint8Array();
+    if ((manifest.chunkHashes && !value.sha256) || (value.sha256 && await sha256Hex(bytes) !== value.sha256)) {
+      throw new Error('El fragmento del PDF no superó la verificación de integridad.');
+    }
+    return bytes;
+  });
+  return { ...reader, size, chunkSize };
 }
 
 export async function loadPdfFromFirestore(

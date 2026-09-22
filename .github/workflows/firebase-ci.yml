@@ -33,6 +33,8 @@ jobs:
       - run: node scripts/verify-firebase-upload-queue.mjs
       - run: node scripts/verify-credit-access.mjs
       - run: node scripts/verify-catalog-order.mjs
+      - run: node scripts/verify-partial-pdf.mjs
+      - run: node scripts/verify-pdf-loading-cache.mjs
       - run: npm run build:firebase
       - run: npm run verify:pdfs
 

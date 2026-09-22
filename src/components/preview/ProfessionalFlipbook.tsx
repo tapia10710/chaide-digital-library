@@ -42,6 +42,7 @@ import {
   getRenderedBitmap,
   invalidateDocument,
   setRenderedBitmap,
+  subscribePdfRecovery,
 } from '../../lib/pdfCache';
 import {
   PDF_DOCUMENT_ATTEMPTS,
@@ -923,6 +924,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadAttempt, setLoadAttempt] = useState(1);
   const [reloadToken, setReloadToken] = useState(0);
+  useEffect(() => subscribePdfRecovery(url, () => setReloadToken(value => value + 1)), [url]);
   const [loading, setLoading] = useState(true);
   const [readyToRender, setReadyToRender] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1360,8 +1362,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
         
         if (!isMounted) return;
 
-        // Get actual page size from first page
-        const firstPage = await pdfDoc.getPage(1);
+        // A search deep link should not fetch page 1 solely to measure dimensions.
+        const firstPage = await pdfDoc.getPage(Math.min(Math.max(initialPage || 1, 1), pdfDoc.numPages));
         const viewport = firstPage.getViewport({ scale: 1 });
         setPdfPageSize({ width: viewport.width, height: viewport.height });
         

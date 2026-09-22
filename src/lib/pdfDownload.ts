@@ -20,6 +20,25 @@ function isAppleMobile() {
 export function downloadPdfFromUserGesture(url: string, title: string) {
   const finalUrl = String(url || '').trim();
   if (!finalUrl) throw new Error('La descarga no está disponible para este catálogo.');
+  if (finalUrl.startsWith('firestore-pdf://')) {
+    // Reserve an iOS tab inside the tap, before the complete-file download begins.
+    const downloadTab = isAppleMobile() ? window.open('about:blank', '_blank') : null;
+    if (downloadTab) downloadTab.document.body.textContent = 'Preparando la descarga del PDF completo…';
+    void (async () => {
+      const [{ loadPdfFromFirestore }, { parseFirestorePdfUrl }] = await Promise.all([
+        import('./firebaseCatalog'), import('./pdfPartialLoading'),
+      ]);
+      const { id, version } = parseFirestorePdfUrl(finalUrl);
+      const objectUrl = await loadPdfFromFirestore(id, undefined, version);
+      if (downloadTab && !downloadTab.closed) downloadTab.location.replace(objectUrl);
+      else downloadPdfFromUserGesture(objectUrl, title);
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 300_000);
+    })().catch(error => {
+      downloadTab?.close();
+      alert(error instanceof Error ? error.message : 'No se pudo descargar el PDF.');
+    });
+    return;
+  }
 
   const link = document.createElement('a');
   link.href = finalUrl;

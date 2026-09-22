@@ -8,6 +8,7 @@ import DistributorAccessGate from '../components/access/DistributorAccessGate';
 import { hasDistributorAccess, isDistributorDocument } from '../lib/distributorAccess';
 import { hasCreditAccess, isCreditDocument } from '../lib/creditAccess';
 import CreditAccessGate from '../components/access/CreditAccessGate';
+import { shouldLoadPdfPartially } from '../lib/pdfPartialLoading';
 
 export default function ViewerPage() {
   const { id } = useParams();
@@ -88,6 +89,13 @@ export default function ViewerPage() {
       return;
     }
 
+    if (shouldLoadPdfPartially(doc?.fileSize)) {
+      setFirebasePdfUrl(sourceUrl);
+      setFirebasePdfError('');
+      setFirebasePdfProgress(0);
+      return;
+    }
+
     let active = true;
     let objectUrl = '';
     const source = sourceUrl.slice('firestore-pdf://'.length);
@@ -141,7 +149,7 @@ export default function ViewerPage() {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [doc?.category, doc?.externalUrl, doc?.fileUrl, distributorAccessRevision, role]);
+  }, [doc?.category, doc?.externalUrl, doc?.fileUrl, doc?.fileSize, distributorAccessRevision, role]);
 
   if (!doc && ((!hasLoadedDocs || isLoadingDocs) || !directDocumentResolved)) {
     return (

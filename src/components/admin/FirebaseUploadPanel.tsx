@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, CloudUpload, FileText, Image as ImageIcon } from 'lucide-react';
 import {
   deleteDriveFilesReliably,
@@ -10,6 +10,23 @@ import { publishPreparedFirebasePdf } from '../../lib/firebaseCatalogPublication
 import { useStore } from '../../store/useStore';
 import { findFallbackCategory } from '../../lib/categoryStructure';
 import { isDistributorCategory } from '../../lib/distributorAccess';
+
+type UploadJob = {
+  id: string;
+  pdf: File | null;
+  cover: File | null;
+  fileName: string;
+  title: string;
+  description: string;
+  category: string;
+  highQuality: boolean;
+  tags: string;
+  publishNow: boolean;
+  replaceDocument?: ReturnType<typeof useStore.getState>['documents'][number];
+  status: 'pending' | 'uploading' | 'done' | 'error';
+  message: string;
+};
+const titleFromFile = (file: File) => file.name.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 export default function FirebaseUploadPanel({
   initialReplaceDocId,
@@ -44,6 +61,14 @@ export default function FirebaseUploadPanel({
   const [highQuality, setHighQuality] = useState(false);
   const [tags, setTags] = useState('');
   const [pdf, setPdf] = useState<File | null>(null);
+  const [additionalPdfs, setAdditionalPdfs] = useState<File[]>([]);
+  const [queue, setQueue] = useState<UploadJob[]>([]);
+  const queueRef = useRef<UploadJob[]>([]);
+  const runningRef = useRef(false);
+  const updateQueue = (update: (items: UploadJob[]) => UploadJob[]) => {
+    queueRef.current = update(queueRef.current);
+    setQueue(queueRef.current);
+  };
   const [cover, setCover] = useState<File | null>(null);
   const [publishNow, setPublishNow] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -67,6 +92,7 @@ export default function FirebaseUploadPanel({
   useEffect(() => {
     if (!replaceDocument) return;
     setPdf(null);
+    setAdditionalPdfs([]);
     setCover(null);
     setTitle(replaceDocument.title);
     setDescription(replaceDocument.description || '');
@@ -84,14 +110,14 @@ export default function FirebaseUploadPanel({
   }, [categories, category, mode]);
 
   useEffect(() => {
-    if (!isUploading) return undefined;
+    if (!isUploading && !queue.some(item => item.status === 'pending' || item.status === 'error')) return undefined;
     const preventAccidentalExit = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
     };
     window.addEventListener('beforeunload', preventAccidentalExit);
     return () => window.removeEventListener('beforeunload', preventAccidentalExit);
-  }, [isUploading]);
+  }, [isUploading, queue]);
 
   const clearFormFields = () => {
     setTitle('');
@@ -100,6 +126,7 @@ export default function FirebaseUploadPanel({
     setHighQuality(false);
     setTags('');
     setPdf(null);
+    setAdditionalPdfs([]);
     setCover(null);
     setPublishNow(false);
   };
@@ -159,13 +186,39 @@ export default function FirebaseUploadPanel({
       setMessage('Selecciona un archivo PDF válido.');
       return;
     }
-    setIsUploading(true);
-    setMessage('Preparando el PDF para el visor integrado…');
+    const files = [pdf, ...(mode === 'new' ? additionalPdfs : [])];
+    if (files.some(file => file.size === 0 || (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')))) {
+      setMessage('Todos los archivos deben ser PDF y no estar vacíos.');
+      return;
+    }
+    if (replaceDocument && queueRef.current.some(item => item.replaceDocument?.id === replaceDocument.id && item.status !== 'done')) {
+      setMessage('Este catálogo ya tiene un reemplazo en la cola.');
+      return;
+    }
+    const jobs = files.filter((file, index) =>
+      files.findIndex(other => other.name === file.name && other.size === file.size && other.lastModified === file.lastModified) === index &&
+      !queueRef.current.some(item => item.pdf?.name === file.name && item.pdf.size === file.size && item.pdf.lastModified === file.lastModified)
+    ).map((file, index): UploadJob => ({
+      id: crypto.randomUUID(), pdf: file, cover: files.length === 1 ? cover : null,
+      fileName: file.name, title: index === 0 ? title.trim() : titleFromFile(file) || 'Catálogo PDF',
+      description: index === 0 ? description.trim() : `Catálogo digital ${titleFromFile(file)}.`,
+      category, highQuality, tags, publishNow, replaceDocument,
+      status: 'pending', message: 'En espera',
+    }));
+    updateQueue(items => [...items, ...jobs]);
+    reset();
+    setMessage(jobs.length ? `${jobs.length} PDF añadidos a la cola. Pulsa Iniciar cola; mantén esta página abierta hasta terminar.` : 'Los archivos seleccionados ya están en la cola.');
+  };
+
+  const publishJob = async (job: UploadJob) => {
+    const { pdf, cover, title, description, category, highQuality, tags, publishNow, replaceDocument } = job;
+    if (!pdf) return;
+    const setMessage = (message: string) => updateQueue(items => items.map(item => item.id === job.id ? { ...item, message } : item));
     let newDriveFileId = '';
     let newCoverFileId = '';
     let publicationCommitted = false;
     try {
-      const id = replaceDocument?.id || `doc-${Date.now().toString(36)}`;
+      const id = replaceDocument?.id || `doc-${job.id}`;
       setMessage('Procesando el PDF y copiándolo a Drive en paralelo…');
       let preparationProgress = 0;
       let driveProgress = 0;
@@ -262,7 +315,6 @@ export default function FirebaseUploadPanel({
       const cleanup = obsoleteDriveIds.length
         ? await deleteDriveFilesReliably(id, obsoleteDriveIds)
         : { pending: [] as string[] };
-      reset();
       const publicationMessage = publishNow
         ? (replaceDocument ? 'PDF reemplazado y publicado.' : 'Catálogo publicado correctamente.')
         : 'Catálogo guardado como borrador privado.';
@@ -276,6 +328,7 @@ export default function FirebaseUploadPanel({
         ? ' La versión nueva está segura; la limpieza anterior se reintentará automáticamente.'
         : '';
       setMessage(`${publicationMessage} ${searchMessage} ${optimizationMessage}${cleanupWarning}${refreshWarning}`);
+      updateQueue(items => items.map(item => item.id === job.id ? { ...item, status: 'done', pdf: null, cover: null } : item));
     } catch (error) {
       if (!publicationCommitted) {
         await Promise.allSettled([
@@ -284,7 +337,26 @@ export default function FirebaseUploadPanel({
         ]);
       }
       setMessage(error instanceof Error ? error.message : 'No se pudo publicar el catálogo.');
+      updateQueue(items => items.map(item => item.id === job.id ? {
+        ...item, status: publicationCommitted ? 'done' : 'error',
+        ...(publicationCommitted ? { pdf: null, cover: null, message: 'Guardado. No repitas la subida; actualiza la lista para comprobarlo.' } : {}),
+      } : item));
+    }
+  };
+
+  const runQueue = async () => {
+    if (runningRef.current) return;
+    runningRef.current = true;
+    setIsUploading(true);
+    try {
+      let next: UploadJob | undefined;
+      while ((next = queueRef.current.find(item => item.status === 'pending'))) {
+        const job = next;
+        updateQueue(items => items.map(item => item.id === job.id ? { ...item, status: 'uploading', message: 'Preparando PDF…' } : item));
+        await publishJob(job);
+      }
     } finally {
+      runningRef.current = false;
       setIsUploading(false);
     }
   };
@@ -457,7 +529,7 @@ export default function FirebaseUploadPanel({
         >
           <FileText className="w-5 h-5 text-red-400" />
           <span className="text-sm truncate">
-            {pdf?.name || (
+            {(pdf ? `${pdf.name}${additionalPdfs.length ? ` (+${additionalPdfs.length} PDF)` : ''}` : '') || (
               mode === 'replace' && !replaceDocument
                 ? 'Primero selecciona el catálogo'
                 : 'Seleccionar PDF (sin límite definido por la aplicación)'
@@ -467,9 +539,15 @@ export default function FirebaseUploadPanel({
             key={`pdf-${mode}-${replaceTargetId}`}
             type="file"
             accept="application/pdf,.pdf"
+            multiple={mode === 'new'}
             disabled={mode === 'replace' && !replaceDocument}
             className="hidden"
-            onChange={(event) => selectPdf(event.target.files?.[0] || null)}
+            onChange={(event) => {
+              const files: File[] = Array.from(event.currentTarget.files || []);
+              selectPdf(files[0] || null);
+              setAdditionalPdfs(mode === 'new' ? files.slice(1) : []);
+              event.target.value = '';
+            }}
           />
         </label>
         <label className="lg:col-span-2 flex items-start gap-3 bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3 cursor-pointer">
@@ -488,12 +566,13 @@ export default function FirebaseUploadPanel({
         </label>
         <label className="flex items-center gap-3 bg-[#0B0F19] border border-white/10 rounded-xl px-4 py-3 cursor-pointer">
           <ImageIcon className="w-5 h-5 text-emerald-400" />
-          <span className="text-sm truncate">{cover?.name || 'Portada opcional'}</span>
+          <span className="text-sm truncate">{additionalPdfs.length ? 'Portada automática para cada PDF' : cover?.name || 'Portada opcional'}</span>
           <input
             key={`cover-${mode}-${replaceTargetId}`}
             type="file"
             accept="image/*"
             className="hidden"
+            disabled={additionalPdfs.length > 0}
             onChange={(event) => setCover(event.target.files?.[0] || null)}
           />
         </label>
@@ -513,21 +592,32 @@ export default function FirebaseUploadPanel({
           </div>
           <button
             type="submit"
-            disabled={isUploading || (mode === 'replace' && !replaceDocument)}
+            disabled={mode === 'replace' && !replaceDocument}
             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-5 py-3 rounded-xl font-semibold"
           >
-            {isUploading
-              ? 'Publicando…'
-              : mode === 'replace' && !replaceDocument
-                ? 'Selecciona un catálogo'
-              : replaceDocument
-                ? 'Reemplazar PDF'
-                : missingRequirements.length
-                  ? 'Revisar y publicar'
-                  : publishNow ? 'Publicar catálogo' : 'Guardar borrador'}
+            Añadir {1 + additionalPdfs.length} PDF a la cola
           </button>
         </div>
       </form>
+      <p className="mt-3 text-xs text-gray-400">Puedes seleccionar varios PDF. Comparten la categoría y la opción de publicación; cada uno genera su propia portada e índice. Añade otros lotes para usar otra categoría. La cola no se conserva si cierras esta página.</p>
+      {queue.length > 0 && (
+        <div className="mt-6 space-y-3" aria-label="Cola de subida de PDF">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="font-semibold">Cola de PDF · {queue.filter(item => item.status === 'done').length}/{queue.length} completados</h3>
+            <button type="button" onClick={runQueue} disabled={isUploading || !queue.some(item => item.status === 'pending')} className="rounded-xl bg-blue-600 px-4 py-3 disabled:opacity-50">{isUploading ? 'Subiendo uno por uno…' : 'Iniciar cola'}</button>
+            <button type="button" onClick={() => updateQueue(items => items.filter(item => item.status !== 'done'))} className="text-sm text-gray-300">Limpiar completados</button>
+          </div>
+          {queue.map(item => (
+            <div key={item.id} className="rounded-xl border border-white/10 bg-[#0B0F19] p-4">
+              <strong className="block break-words">{item.fileName}</strong>
+              <p className="text-xs text-gray-400">{item.category} · {item.publishNow ? 'Publicar' : 'Borrador'}{item.replaceDocument ? ' · Reemplazo' : ''}</p>
+              <p role="status" className={`mt-2 text-sm ${item.status === 'error' ? 'text-red-300' : item.status === 'done' ? 'text-emerald-300' : 'text-blue-200'}`}>{item.message}</p>
+              {item.status === 'error' && <button type="button" className="mt-2 mr-4 text-sm underline" onClick={() => updateQueue(items => items.map(entry => entry.id === item.id ? { ...entry, status: 'pending', message: 'En espera para reintentar' } : entry))}>Volver a poner en cola</button>}
+              {item.status !== 'uploading' && <button type="button" className="mt-2 text-sm text-gray-400 underline" onClick={() => updateQueue(items => items.filter(entry => entry.id !== item.id))}>Quitar de la cola</button>}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

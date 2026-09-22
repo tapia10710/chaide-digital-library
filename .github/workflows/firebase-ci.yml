@@ -30,6 +30,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      - run: node scripts/verify-firebase-upload-queue.mjs
       - run: npm run build:firebase
       - run: npm run verify:pdfs
 

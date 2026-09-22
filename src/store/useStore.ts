@@ -482,9 +482,12 @@ export const useStore = create<AppState>((set, get) => ({
     if (isFirebaseSite) {
       const { deleteFileFromDrive, saveFirebaseDocument, uploadFileToDrive } = await import('../lib/firebaseCatalog');
       const changes: Record<string, unknown> = {};
+      const { parsePublicationOrder } = await import('../lib/catalogOrder');
       formData.forEach((value, key) => {
         if (value instanceof File) return;
-        if (key === 'pageCount' || key === 'priority') {
+        if (key === 'publicationOrder') {
+          changes[key] = parsePublicationOrder(String(value));
+        } else if (key === 'pageCount' || key === 'priority') {
           changes[key] = Number(value);
         } else if (key === 'isActive' || key === 'highQuality') {
           changes[key] = value === 'true';

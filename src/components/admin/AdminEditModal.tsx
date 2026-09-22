@@ -3,6 +3,7 @@ import { X, Upload, FileText, Image as ImageIcon } from 'lucide-react';
 import { DocumentDef } from '../../lib/mockData';
 import { useStore } from '../../store/useStore';
 import { supportsHighQuality } from '../../lib/catalogQuality';
+import { parsePublicationOrder } from '../../lib/catalogOrder';
 
 interface AdminEditModalProps {
   document: DocumentDef;
@@ -19,6 +20,7 @@ export default function AdminEditModal({ document, onClose }: AdminEditModalProp
   const [fileUrl, setFileUrl] = useState(document.fileUrl || '');
   const [externalUrl, setExternalUrl] = useState(document.externalUrl || '');
   const [priority, setPriority] = useState((document.priority ?? 5).toString());
+  const [publicationOrder, setPublicationOrder] = useState(String(document.publicationOrder || ''));
   const [isActive, setIsActive] = useState(document.isActive !== false);
 
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -40,6 +42,7 @@ export default function AdminEditModal({ document, onClose }: AdminEditModalProp
     setIsSubmitting(true);
     try {
       const formData = new FormData();
+      formData.append('publicationOrder', String(parsePublicationOrder(publicationOrder)));
       formData.append('highQuality', String(highQuality && supportsHighQuality(category)));
       if (title !== document.title) formData.append('title', title);
       formData.append('description', description);
@@ -175,6 +178,14 @@ export default function AdminEditModal({ document, onClose }: AdminEditModalProp
             </div>
 
             {/* Priority & IsActive */}
+            <label className="block text-gray-300">
+              Orden en la categoría publicada
+              <input type="number" min="0" step="1" value={publicationOrder}
+                disabled={isSubmitting} onChange={event => setPublicationOrder(event.target.value)}
+                placeholder="Automático por fecha"
+                className="mt-2 w-full bg-[#0B0F19] border border-white/10 rounded-lg px-3 py-2 text-white" />
+              <span className="block mt-2 text-xs text-gray-400">1 primero, 2 segundo, 3 tercero… Vacío o 0: por fecha de subida, más recientes primero, después de los numerados. Si repites un número, se ordenan por fecha.</span>
+            </label>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-gray-400 font-medium mb-1.5">Prioridad de Carga (1 es max)</label>

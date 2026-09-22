@@ -275,6 +275,7 @@ export default function AdminDashboard() {
                       <img src={doc.coverUrl} alt={doc.title} className="w-10 h-14 object-cover rounded shadow-sm" />
                       <div>
                         <div className="font-medium text-white">{doc.title}</div>
+                        <div className="text-xs text-blue-300 mt-1">{doc.category} · {doc.publicationOrder && doc.publicationOrder > 0 ? `Orden publicado: ${doc.publicationOrder}` : 'Orden automático por fecha'}</div>
                         <div className="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{doc.description}</div>
                       </div>
                     </div>

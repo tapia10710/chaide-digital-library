@@ -33,6 +33,8 @@ export interface DocumentDef {
   priority?: number;
   isActive?: boolean;
   order?: number;
+  publicationOrder?: number;
+  createdAt?: string;
   fileSize?: number;
   indexItems?: DocumentIndexItem[];
   searchIndexVersion?: string;

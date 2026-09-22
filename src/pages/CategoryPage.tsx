@@ -8,6 +8,7 @@ import DistributorAccessGate from '../components/access/DistributorAccessGate';
 import { isDistributorCategory, canViewDistributorDocument } from '../lib/distributorAccess';
 import { isCreditCategory } from '../lib/creditAccess';
 import CreditAccessGate from '../components/access/CreditAccessGate';
+import { compareCatalogOrder } from '../lib/catalogOrder';
 
 export default function CategoryPage() {
   const { slug } = useParams();
@@ -22,7 +23,7 @@ export default function CategoryPage() {
     doc.category === category?.name ||
     (canViewDistributorDocument(doc, role) &&
       Boolean(staticCategory && documentMatchesCatalogCategory(doc, staticCategory)))
-  );
+  ).sort(compareCatalogOrder);
 
   if (!category) return <div className="text-[#111] p-8 font-medium">Categoría no encontrada</div>;
 

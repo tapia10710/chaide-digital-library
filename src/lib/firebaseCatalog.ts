@@ -666,7 +666,9 @@ export type FirebasePdfUploadResult = {
 const PDF_CHUNK_BYTES = 700 * 1024;
 const PDF_CACHE_INDEX_KEY = 'chaide_firestore_pdf_cache_v1';
 
-async function cacheFirestorePdf(key: string, bytes: Uint8Array) {
+type VerifiedPdfCache = { bytes: Uint8Array; sha256: string; version: string };
+
+async function cacheFirestorePdf(key: string, bytes: Uint8Array, version = '', sha256 = '') {
   try {
     const index = (await getCachedValue<Array<{ key: string; usedAt: number }>>(PDF_CACHE_INDEX_KEY)) || [];
     const next = index.filter((entry) => entry.key !== key);
@@ -675,7 +677,7 @@ async function cacheFirestorePdf(key: string, bytes: Uint8Array) {
       const oldest = next.shift();
       if (oldest) await deleteCachedValue(oldest.key);
     }
-    await setCachedValue(key, bytes);
+    await setCachedValue(key, { bytes, version, sha256: sha256 || await sha256Hex(bytes) } satisfies VerifiedPdfCache);
     await setCachedValue(PDF_CACHE_INDEX_KEY, next);
   } catch {
     // IndexedDB can be unavailable in private browsing. The viewer still works
@@ -919,6 +921,21 @@ export async function loadPdfFromFirestore(
   requestedVersion?: string,
 ): Promise<string> {
   onProgress?.(5);
+  // Published versions are immutable. The caller has already resolved access
+  // and current document metadata, so verified bytes for that exact version
+  // need no additional manifest round trip.
+  if (requestedVersion) {
+    try {
+      const cached = await getCachedValue<VerifiedPdfCache>(
+        `chaide_firestore_pdf_${id}_${requestedVersion}`,
+      );
+      if (cached?.version === requestedVersion && cached.bytes?.byteLength &&
+          cached.sha256 && await sha256Hex(cached.bytes) === cached.sha256) {
+        onProgress?.(100);
+        return URL.createObjectURL(new Blob([cached.bytes], { type: 'application/pdf' }));
+      }
+    } catch { /* Network fallback for missing or invalid browser storage. */ }
+  }
   const manifest = requestedVersion
     ? await getDoc(doc(db, 'pdfFiles', id, 'versions', requestedVersion))
     : await getDoc(doc(db, 'pdfFiles', id));
@@ -927,11 +944,13 @@ export async function loadPdfFromFirestore(
   const version = requestedVersion || String(manifest.data().version || '');
   const cacheKey = `chaide_firestore_pdf_${id}_${version || 'current'}`;
   try {
-    const cached = await getCachedValue<Uint8Array>(cacheKey);
+    const entry = await getCachedValue<Uint8Array | VerifiedPdfCache>(cacheKey);
+    const cached = entry instanceof Uint8Array ? entry : entry?.bytes;
     const expectedBytes = Number(manifest.data().size || 0);
     if (cached?.byteLength && (!expectedBytes || cached.byteLength === expectedBytes)) {
       const signature = new TextDecoder('ascii').decode(cached.slice(0, 5));
-      if (signature === '%PDF-') {
+      const expectedHash = String(manifest.data().sha256 || '');
+      if (signature === '%PDF-' && (!expectedHash || await sha256Hex(cached) === expectedHash)) {
         onProgress?.(100);
         return URL.createObjectURL(new Blob([cached], { type: 'application/pdf' }));
       }
@@ -972,7 +991,8 @@ export async function loadPdfFromFirestore(
   if (expectedHash && await sha256Hex(complete) !== expectedHash) {
     throw new Error('El PDF no coincide con su firma de integridad. Se intentará usar el respaldo de Drive.');
   }
-  await cacheFirestorePdf(cacheKey, complete);
+  // Persistence must not delay the first visible page.
+  void cacheFirestorePdf(cacheKey, complete, version, expectedHash);
   const blob = new Blob([complete], { type: 'application/pdf' });
   onProgress?.(100);
   return URL.createObjectURL(blob);

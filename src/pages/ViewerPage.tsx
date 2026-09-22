@@ -128,6 +128,7 @@ export default function ViewerPage() {
       .then((url) => {
         objectUrl = url;
         if (active) setFirebasePdfUrl(url);
+        else URL.revokeObjectURL(url);
       })
       .catch((error) => {
         if (active) setFirebasePdfError(error instanceof Error ? error.message : 'No se pudo cargar el PDF.');

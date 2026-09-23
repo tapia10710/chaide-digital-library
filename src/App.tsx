@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, HashRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { ReactLenis } from 'lenis/react';
 import AppLayout from './components/layout/AppLayout';
+import SeoMetadata from './components/layout/SeoMetadata';
 import { isFirebaseSite, isStaticSite } from './lib/runtimeConfig';
 import { useStore } from './store/useStore';
 
@@ -81,6 +82,7 @@ function App() {
   return (
     <ReactLenis root>
       <Router {...routerProps}>
+        <SeoMetadata />
         <FirebaseAuthBootstrap>
           <Suspense fallback={<RouteFallback />}>
             <Routes>

@@ -37,6 +37,7 @@ jobs:
       - run: node scripts/verify-persistent-pdf-chunks.mjs
       - run: node scripts/verify-pdf-loading-cache.mjs
       - run: npm run build:firebase
+      - run: node scripts/verify-seo.mjs
       - run: npm run verify:pdfs
 
       - name: Authenticate Firebase deployment

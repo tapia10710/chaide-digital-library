@@ -52,8 +52,16 @@ class Bytes { constructor(data) { this.bytes = data; } toUint8Array() { return t
 let transferred = 0, failReads = false, corrupt = false, fullLoads = 0;
 const firebaseSource = fs.readFileSync(new URL('../src/lib/firebaseCatalog.ts', import.meta.url), 'utf8');
 const rangeSource = firebaseSource.slice(firebaseSource.indexOf('export async function openFirestorePdfRanges('), firebaseSource.indexOf('export async function loadPdfFromFirestore('));
+const persistent = new Map();
 const ranges = load(rangeSource, { ...partial, Bytes, PDF_CHUNK_BYTES: chunkSize, db: {}, doc: (...args) => args,
   sha256Hex: hash,
+  async readPersistentPdfChunk(id, version, index, size) {
+    const value = persistent.get(`${id}:${version}:${index}`);
+    return value?.byteLength === size ? value : null;
+  },
+  savePersistentPdfChunk(id, version, index, value) {
+    persistent.set(`${id}:${version}:${index}`, value);
+  },
   async getDoc(path) {
     if (!path.includes('chunks')) return { exists: () => true, data: () => ({ size: bytes.length, version: 'v1', chunkCount: Math.ceil(bytes.length / chunkSize), chunkSize, chunkHashes: true }) };
     if (failReads) return { exists: () => false };
@@ -93,10 +101,18 @@ assert.match((await firstPage.getTextContent()).items.map(item => item.str).join
 assert.equal(fullLoads, 0);
 assert.ok(transferred < bytes.length / 2, `Partial loading fetched ${transferred} of ${bytes.length}`);
 console.log(`PASS: actual PDF.js opens and navigates a ${(bytes.length / 1e6).toFixed(1)} MB PDF after reading ${(transferred / 1e6).toFixed(1)} MB; searchable text retained.`);
+assert.ok(persistent.size > 0, 'Verified fragments were saved for another visit');
+const beforeRevisit = transferred;
+const revisit = await ranges.openFirestorePdfRanges(url);
+assert.deepEqual(await revisit.read(0, 100), bytes.slice(0, 100));
+assert.equal(transferred, beforeRevisit, 'Reopening reuses persisted fragments');
+revisit.close();
 const beforeCached = transferred;
 assert.equal(await cache.loadDocument(url, undefined, true), pdf);
 assert.equal(transferred, beforeCached);
 
+// A corrupt network response must still be rejected when no saved copy exists.
+persistent.clear();
 corrupt = true;
 const bad = await ranges.openFirestorePdfRanges(url);
 await assert.rejects(bad.read(0, 100), /integridad/);

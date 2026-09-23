@@ -17,6 +17,7 @@ import {
 import { auth, db } from './firebase';
 import type { DocumentDef } from './mockData';
 import { createPdfRangeReader, parseFirestorePdfUrl } from './pdfPartialLoading';
+import { readPersistentPdfChunk, savePersistentPdfChunk } from './pdfPersistentChunks';
 import { buildCatalogSearchTokens } from './catalogSearchTokens';
 import {
   FALLBACK_CATEGORY_ID,
@@ -935,6 +936,9 @@ export async function openFirestorePdfRanges(url: string) {
     throw new Error('Este PDF requiere carga completa.');
   }
   const reader = createPdfRangeReader(size, chunkSize, async index => {
+    const expectedSize = Math.min(chunkSize, size - index * chunkSize);
+    const persisted = await readPersistentPdfChunk(id, version, index, expectedSize);
+    if (persisted) return persisted;
     const part = await getDoc(doc(db, 'pdfFiles', id, 'chunks', `${version}-${String(index).padStart(5, '0')}`));
     if (!part.exists()) throw new Error('Falta un fragmento del PDF.');
     const value = part.data();
@@ -945,6 +949,8 @@ export async function openFirestorePdfRanges(url: string) {
     if ((manifest.chunkHashes && !value.sha256) || (value.sha256 && await sha256Hex(bytes) !== value.sha256)) {
       throw new Error('El fragmento del PDF no superó la verificación de integridad.');
     }
+    // Persist only the verified fragment; do not delay first paint for storage.
+    savePersistentPdfChunk(id, version, index, bytes, value.sha256);
     return bytes;
   });
   return { ...reader, size, chunkSize };

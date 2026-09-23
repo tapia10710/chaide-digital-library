@@ -2593,24 +2593,24 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
               <div className="pdf-book-wrapper">
                  {/* Loading & Error Overlays */}
                  {(loading || !readyToRender) && !error && (
-                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-2xl">
-                      <div className="w-10 h-10 border-2 border-gray-200 border-t-gray-800 rounded-full animate-spin" />
-                      <p className="mt-4 text-xs font-bold text-gray-800">
-                        {loadProgress > 0 ? `${loadProgress}%` : 'Preparando'} el catálogo…
-                      </p>
-                      <div className="mt-3 h-1.5 w-44 overflow-hidden rounded-full bg-gray-200">
-                        <div
-                          className={cn(
-                            "h-full rounded-full bg-blue-600 transition-all duration-300",
-                            loadProgress === 0 && "w-1/3 animate-pulse"
-                          )}
-                          style={loadProgress > 0 ? { width: `${loadProgress}%` } : undefined}
-                        />
+                    <div role="status" aria-live="polite" className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl bg-[#f4f4f2] p-5 text-center">
+                      {currentDoc?.coverUrl ? (
+                        <img src={currentDoc.coverUrl} alt="" className="max-h-[55%] w-auto max-w-[80%] rounded-lg object-contain shadow-xl" />
+                      ) : null}
+                      <div className="min-w-0 max-w-md">
+                        <p className="truncate text-base font-semibold text-gray-900">{title}</p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          {loadProgress > 0 && loadProgress < 100
+                            ? `Descargando PDF · ${loadProgress}%`
+                            : `Preparando página ${Math.max(1, initialPage || 1)}…`}
+                        </p>
+                      </div>
+                      <div className="h-1.5 w-48 overflow-hidden rounded-full bg-gray-200">
+                        <div className={cn('h-full rounded-full bg-[#0055b8] transition-all duration-300', loadProgress === 0 && 'w-1/3 animate-pulse')}
+                          style={loadProgress > 0 ? { width: `${loadProgress}%` } : undefined} />
                       </div>
                       {loadAttempt > 1 ? (
-                        <p className="mt-3 text-[10px] font-semibold text-gray-500">
-                          Reintento automático {loadAttempt} de {PDF_DOCUMENT_ATTEMPTS}
-                        </p>
+                        <p className="text-xs font-medium text-gray-500">Reintento automático {loadAttempt} de {PDF_DOCUMENT_ATTEMPTS}</p>
                       ) : null}
                     </div>
                   )}
@@ -3583,8 +3583,11 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
 
         .pdf-book-area {
           position: relative;
-          width: fit-content;
+          width: 100%;
           max-width: 100%;
+          height: 100%;
+          min-width: 0;
+          min-height: 0;
           display: flex;
           align-items: center;
           justify-content: center;

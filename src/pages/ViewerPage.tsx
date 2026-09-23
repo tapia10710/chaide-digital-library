@@ -153,9 +153,9 @@ export default function ViewerPage() {
 
   if (!doc && ((!hasLoadedDocs || isLoadingDocs) || !directDocumentResolved)) {
     return (
-      <div className="fixed inset-0 bg-[#0B0F19] flex items-center justify-center text-white flex-col gap-4">
-        <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-400">Iniciando visor...</p>
+      <div role="status" aria-live="polite" className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-[#f4f4f2] text-gray-900">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-gray-200 border-t-[#0055b8]" />
+        <p className="text-sm text-gray-600">Iniciando visor…</p>
       </div>
     );
   }
@@ -186,12 +186,13 @@ export default function ViewerPage() {
 
   if (doc.fileUrl?.startsWith('firestore-pdf://') && !firebasePdfUrl && !firebasePdfError) {
     return (
-      <div className="fixed inset-0 bg-[#0B0F19] flex items-center justify-center text-white flex-col gap-4">
-        <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-300">Preparando el catálogo para el visor…</p>
-        <div className="h-1.5 w-56 overflow-hidden rounded-full bg-white/10">
+      <div role="status" aria-live="polite" className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-[#f4f4f2] p-6 text-center text-gray-900">
+        {doc.coverUrl ? <img src={doc.coverUrl} alt="" className="max-h-[45vh] max-w-[70vw] rounded-lg object-contain shadow-xl" /> : null}
+        <p className="max-w-md truncate text-base font-semibold">{doc.title}</p>
+        <p className="text-sm text-gray-600">Preparando el catálogo para el visor…</p>
+        <div className="h-1.5 w-56 overflow-hidden rounded-full bg-gray-200">
           <div
-            className="h-full rounded-full bg-blue-500 transition-all duration-300"
+            className="h-full rounded-full bg-[#0055b8] transition-all duration-300"
             style={{ width: `${firebasePdfProgress}%` }}
           />
         </div>

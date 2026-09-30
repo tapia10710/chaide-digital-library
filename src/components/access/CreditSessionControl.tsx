@@ -64,17 +64,19 @@ export default function CreditSessionControl() {
     };
   }, [active, role]);
 
-  if (!active || role === 'admin') return null;
+  if (!isProtectedLocation || (!active && role !== 'admin')) return null;
 
   return (
-    <aside className="distributor-session-control credit-session-control" aria-label="Sesión de visualización del historial de precios">
+    <aside className="distributor-session-control protected-session-control" aria-label="Salida del historial de precios">
       <button
         type="button"
         aria-label="Salir del historial de precios"
         title="Salir del historial de precios"
         onClick={() => {
-          clearCreditAccess('manual');
-          setActive(false);
+          if (role !== 'admin') {
+            clearCreditAccess('manual');
+            setActive(false);
+          }
           navigate('/', { replace: true });
         }}
       >

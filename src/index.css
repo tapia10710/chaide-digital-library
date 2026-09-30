@@ -3319,7 +3319,6 @@ body {
   backdrop-filter: blur(14px);
 }
 
-.distributor-session-status,
 .distributor-session-control button {
   display: inline-flex;
   align-items: center;
@@ -3329,8 +3328,6 @@ body {
   font-weight: 700;
 }
 
-.distributor-session-status { padding: 0 9px; color: rgba(255, 255, 255, .76); }
-.distributor-session-status svg { width: 14px; height: 14px; }
 .distributor-session-control button {
   min-height: 34px;
   padding: 0 13px;
@@ -3345,21 +3342,20 @@ body {
 .distributor-session-control button:active { transform: scale(.97); }
 .distributor-session-control button svg { width: 15px; height: 15px; }
 
-.credit-session-control {
+.protected-session-control {
   top: 86px;
   bottom: auto;
   max-width: calc(100vw - 24px);
   padding: 4px;
   box-shadow: 0 6px 18px rgba(11, 31, 21, .14);
 }
-.credit-session-control button { min-height: 30px; padding: 0 10px; font-size: 11px; }
-.credit-session-control button svg { width: 13px; height: 13px; }
+.protected-session-control button { min-height: 30px; padding: 0 10px; font-size: 11px; }
+.protected-session-control button svg { width: 13px; height: 13px; }
 
 @media (max-width: 640px) {
   .distributor-session-control {
     right: 12px;
     top: 76px;
   }
-  .distributor-session-status { display: none; }
-  .credit-session-control { top: 76px; bottom: auto; }
+  .protected-session-control { top: 76px; bottom: auto; }
 }

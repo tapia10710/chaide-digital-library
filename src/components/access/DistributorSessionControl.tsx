@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Clock3, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   clearDistributorAccess,
   DISTRIBUTOR_ACCESS_EVENT,
-  DISTRIBUTOR_ACCESS_TIMEOUT_MS,
   hasDistributorAccess,
   isDistributorCategory,
   isDistributorDocument,
@@ -65,21 +64,19 @@ export default function DistributorSessionControl() {
     };
   }, [active, role]);
 
-  if (!active || role === 'admin') return null;
-
-  const minutes = Math.round(DISTRIBUTOR_ACCESS_TIMEOUT_MS / 60_000);
+  if (!isProtectedLocation || (!active && role !== 'admin')) return null;
 
   return (
-    <aside className="distributor-session-control" aria-label="Sesión de visualización de distribuidores">
-      <span className="distributor-session-status" title={`Se cerrará después de ${minutes} minutos sin actividad`}>
-        <Clock3 aria-hidden="true" />
-        Acceso de distribuidores
-      </span>
+    <aside className="distributor-session-control protected-session-control" aria-label="Salida del catálogo de distribuidores">
       <button
         type="button"
+        aria-label="Salir del catálogo de distribuidores"
+        title="Salir del catálogo de distribuidores"
         onClick={() => {
-          clearDistributorAccess('manual');
-          setActive(false);
+          if (role !== 'admin') {
+            clearDistributorAccess('manual');
+            setActive(false);
+          }
           navigate('/', { replace: true });
         }}
       >

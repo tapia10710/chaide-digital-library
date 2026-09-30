@@ -25,7 +25,7 @@ function load(file, imports = {}) {
 const credit = load('creditAccess.ts');
 const distributor = load('distributorAccess.ts', { './creditAccess': credit });
 const quality = load('catalogQuality.ts', { './creditAccess': credit, './distributorAccess': distributor });
-for (const category of ['Crédito', 'credito', ' CRÉDITO ', 'Catálogo de Distribuidores']) {
+for (const category of ['Crédito', 'credito', ' CRÉDITO ', 'Historial de lista de precios', 'Catálogo de Distribuidores']) {
   assert.equal(quality.supportsHighQuality(category), true);
   assert.equal(quality.usesHighQuality({ category, highQuality: true }), true);
   assert.equal(quality.usesHighQuality({ category, highQuality: false }), false);

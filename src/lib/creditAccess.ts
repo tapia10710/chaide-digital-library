@@ -1,7 +1,8 @@
 import type { DocumentDef } from './mockData';
 
 export const CREDIT_CATEGORY_SLUG = 'credito';
-export const CREDIT_CATEGORY_NAME = 'Crédito';
+export const CREDIT_CATEGORY_NAME = 'HISTORIAL DE LISTA DE PRECIOS';
+const LEGACY_CREDIT_CATEGORY_NAME = 'Crédito';
 
 const ACCESS_SESSION_KEY = 'chaide:credit-catalog:access:v1';
 const ACCESS_ACTIVITY_KEY = 'chaide:credit-catalog:last-activity:v1';
@@ -25,7 +26,9 @@ function normalize(value?: string | null) {
 }
 
 export function isCreditCategory(slug?: string | null, name?: string | null) {
-  return normalize(slug) === CREDIT_CATEGORY_SLUG || normalize(name) === normalize(CREDIT_CATEGORY_NAME);
+  return normalize(slug) === CREDIT_CATEGORY_SLUG ||
+    normalize(name) === normalize(CREDIT_CATEGORY_NAME) ||
+    normalize(name) === normalize(LEGACY_CREDIT_CATEGORY_NAME);
 }
 
 export function isCreditDocument(document?: Pick<DocumentDef, 'category'> | null) {

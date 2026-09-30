@@ -3285,6 +3285,7 @@ body {
 .distributor-access-icon svg { width: 24px; height: 24px; }
 .distributor-access-eyebrow { display: block; margin-bottom: 10px; color: #075abd; font-size: 11px; font-weight: 800; letter-spacing: .15em; }
 .distributor-access-card h1 { margin: 0; font-size: clamp(30px, 6vw, 42px); font-weight: 750; letter-spacing: -.045em; line-height: 1.02; }
+.credit-access-card h1 { font-size: clamp(24px, 5vw, 32px); line-height: 1.12; text-wrap: balance; }
 .distributor-access-card > p { margin: 18px auto 28px; color: rgba(17, 17, 17, .58); font-size: 15px; line-height: 1.55; }
 .distributor-access-card form { display: grid; gap: 10px; text-align: left; }
 .distributor-access-card form > label { font-size: 12px; font-weight: 750; }
@@ -3344,10 +3345,21 @@ body {
 .distributor-session-control button:active { transform: scale(.97); }
 .distributor-session-control button svg { width: 15px; height: 15px; }
 
+.credit-session-control {
+  top: 86px;
+  bottom: auto;
+  max-width: calc(100vw - 24px);
+  padding: 4px;
+  box-shadow: 0 6px 18px rgba(11, 31, 21, .14);
+}
+.credit-session-control button { min-height: 30px; padding: 0 10px; font-size: 11px; }
+.credit-session-control button svg { width: 13px; height: 13px; }
+
 @media (max-width: 640px) {
   .distributor-session-control {
     right: 12px;
     top: 76px;
   }
   .distributor-session-status { display: none; }
+  .credit-session-control { top: 76px; bottom: auto; }
 }

@@ -500,7 +500,8 @@ export const useStore = create<AppState>((set, get) => ({
       const { supportsHighQuality } = await import('../lib/catalogQuality');
       changes.highQuality = (changes.highQuality ?? currentDocument?.highQuality) === true &&
         supportsHighQuality(String(changes.category ?? currentDocument?.category ?? ''));
-      if (changes.highQuality && currentDocument?.viewerOptimization?.mode === 'flattened') {
+      if (changes.highQuality && currentDocument?.highQuality !== true &&
+        currentDocument?.viewerOptimization?.mode === 'flattened') {
         const { downloadFileFromDrive, uploadPdfToFirestore } = await import('../lib/firebaseCatalog');
         if (!currentDocument.driveFileId) throw new Error('Falta el PDF original en Drive. Reemplaza este documento con el original y marca alta calidad.');
         const original = await downloadFileFromDrive(currentDocument.driveFileId, currentDocument.title + '.pdf');

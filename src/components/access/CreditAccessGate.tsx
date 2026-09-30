@@ -61,10 +61,10 @@ export default function CreditAccessGate({ children, bypass = false, onGranted }
 
   return (
     <main className="distributor-access-page" aria-labelledby="distributor-access-title">
-      <section className="distributor-access-card">
+      <section className="distributor-access-card credit-access-card">
         <div className="distributor-access-icon"><LockKeyhole aria-hidden="true" /></div>
         <span className="distributor-access-eyebrow">ACCESO DE VISUALIZACIÓN</span>
-        <h1 id="distributor-access-title">Crédito</h1>
+        <h1 id="distributor-access-title">HISTORIAL DE LISTA DE PRECIOS</h1>
         <p>Ingresa la clave general para consultar la lista y visualizar sus documentos.</p>
         <form onSubmit={submit}>
           <label htmlFor="distributor-access-password">Clave de ingreso</label>

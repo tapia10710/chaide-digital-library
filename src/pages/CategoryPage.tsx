@@ -6,7 +6,7 @@ import PDFCard from '../components/library/PDFCard';
 import { catalogCategories, documentMatchesCatalogCategory } from '../lib/catalogCategories';
 import DistributorAccessGate from '../components/access/DistributorAccessGate';
 import { isDistributorCategory, canViewDistributorDocument } from '../lib/distributorAccess';
-import { isCreditCategory } from '../lib/creditAccess';
+import { CREDIT_CATEGORY_NAME, isCreditCategory } from '../lib/creditAccess';
 import CreditAccessGate from '../components/access/CreditAccessGate';
 import { compareCatalogOrder } from '../lib/catalogOrder';
 
@@ -21,11 +21,17 @@ export default function CategoryPage() {
   const category = editableCategory || null;
   const catalogos = documents.filter(doc =>
     doc.category === category?.name ||
+    (isCreditCategory(slug, category?.name) && isCreditCategory(undefined, doc.category)) ||
     (canViewDistributorDocument(doc, role) &&
       Boolean(staticCategory && documentMatchesCatalogCategory(doc, staticCategory)))
   ).sort(compareCatalogOrder);
 
   if (!category) return <div className="text-[#111] p-8 font-medium">Categoría no encontrada</div>;
+  const creditCategory = isCreditCategory(slug, category.name);
+  const categoryTitle = creditCategory ? CREDIT_CATEGORY_NAME : category.name;
+  const categoryDescription = creditCategory
+    ? 'Documentos para el área comercial y crédito. Acceso de visualización con clave.'
+    : category.description;
 
   const page = (
     <main className="min-h-screen bg-[#f5f5f2] pt-24 pb-20 px-4 md:px-8" style={{ color: '#111', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", sans-serif' }}>
@@ -39,8 +45,8 @@ export default function CategoryPage() {
         </button>
 
         <header className="mb-14">
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4" style={{ letterSpacing: '-0.055em' }}>{category.name}</h1>
-          <p className="text-lg md:text-xl" style={{ color: 'rgba(0, 0, 0, 0.62)' }}>{category.description}</p>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4" style={{ letterSpacing: '-0.055em' }}>{categoryTitle}</h1>
+          <p className="text-lg md:text-xl" style={{ color: 'rgba(0, 0, 0, 0.62)' }}>{categoryDescription}</p>
         </header>
 
         {isLoadingDocs || !hasLoadedDocs ? (
@@ -63,7 +69,7 @@ export default function CategoryPage() {
     </main>
   );
 
-  if (isCreditCategory(slug, category.name)) {
+  if (creditCategory) {
     return <CreditAccessGate bypass={role === 'admin'}>{page}</CreditAccessGate>;
   }
   if (isDistributorCategory(slug, category.name)) {

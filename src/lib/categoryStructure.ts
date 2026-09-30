@@ -35,6 +35,7 @@ export function splitCategoryMenuLabel(value: string): [string, string] {
 
   if (normalized === 'catalogo de productos') return ['Catálogo de', 'Productos'];
   if (normalized === 'catalogo de distribuidores') return ['Catálogo de', 'Distribuidores'];
+  if (normalized === 'historial de lista de precios') return ['Historial de lista', 'de precios'];
   if (normalized === normalizeCategoryIdentity(FALLBACK_CATEGORY_NAME)) {
     return ['Fichas de productos', 'e innovaciones'];
   }

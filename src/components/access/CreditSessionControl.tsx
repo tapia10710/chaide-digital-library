@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Clock3, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   clearCreditAccess,
   CREDIT_ACCESS_EVENT,
-  CREDIT_ACCESS_TIMEOUT_MS,
   hasCreditAccess,
   isCreditCategory,
   isCreditDocument,
@@ -67,16 +66,12 @@ export default function CreditSessionControl() {
 
   if (!active || role === 'admin') return null;
 
-  const minutes = Math.round(CREDIT_ACCESS_TIMEOUT_MS / 60_000);
-
   return (
-    <aside className="distributor-session-control" style={{ bottom: 80 }} aria-label="Sesión de visualización de crédito">
-      <span className="distributor-session-status" title={`Se cerrará después de ${minutes} minutos sin actividad`}>
-        <Clock3 aria-hidden="true" />
-        Acceso de crédito
-      </span>
+    <aside className="distributor-session-control credit-session-control" aria-label="Sesión de visualización del historial de precios">
       <button
         type="button"
+        aria-label="Salir del historial de precios"
+        title="Salir del historial de precios"
         onClick={() => {
           clearCreditAccess('manual');
           setActive(false);

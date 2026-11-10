@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { getTwoFingerMovement } from '../src/lib/pdfTouchGesture.ts';
+
+const points = (x1, y1, x2, y2) => [{ x: x1, y: y1 }, { x: x2, y: y2 }];
+const start = points(90, 130, 160, 175);
+const down = getTwoFingerMovement(start, points(90, 210, 161, 254));
+assert.equal(down.mode, 'scroll');
+assert.ok(down.vertical > 0);
+const up = getTwoFingerMovement(start, points(89, 68, 160, 114));
+assert.equal(up.mode, 'scroll');
+assert.ok(up.vertical < 0);
+assert.equal(getTwoFingerMovement(start, points(90, 146, 160, 175)).mode, null);
+assert.equal(getTwoFingerMovement(start, points(140, 130, 210, 175)).mode, null);
+const pinch = getTwoFingerMovement(start, points(65, 114, 185, 191));
+assert.equal(pinch.mode, 'pinch');
+assert.ok(pinch.scale > 1);
+const pinchIn = getTwoFingerMovement(start, points(108, 140, 144, 164));
+assert.equal(pinchIn.mode, 'pinch');
+assert.ok(pinchIn.scale < 1);
+console.log('PASS: descenso, ascenso, movimiento escalonado y pellizco en ambos sentidos.');

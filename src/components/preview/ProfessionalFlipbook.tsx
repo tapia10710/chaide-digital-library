@@ -56,6 +56,7 @@ import {
 import CatalogPreviewCard from '../library/CatalogPreviewCard';
 import CatalogViewerDetails from './CatalogViewerDetails';
 import { downloadPdfFromUserGesture } from '../../lib/pdfDownload';
+import { getTwoFingerMovement } from '../../lib/pdfTouchGesture';
 
 // ... (previous imports and Page component remain same)
 
@@ -956,7 +957,8 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   
   const mainAreaRef = useRef<HTMLDivElement>(null);
   const bookRef = useRef<any>(null);
-  const activePointers = useRef<Map<number, { x: number, y: number, time: number }>>(new Map());
+  type ViewerPointer = { x: number; y: number; currentX: number; currentY: number; pointerType: string };
+  const activePointers = useRef(new Map<number, ViewerPointer>());
   const lastTapRef = useRef<{ x: number, y: number, time: number } | null>(null);
   const singleTapTimerRef = useRef<number | null>(null);
   const navigationUnlockTimerRef = useRef<number | null>(null);
@@ -970,7 +972,12 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
   const isPanningRef = useRef(false);
   const startPanRef = useRef({ x: 0, y: 0 });
   const lastPanRef = useRef({ x: 0, y: 0 });
-  const initialTouchDistanceRef = useRef<number | null>(null);
+  const twoFingerRef = useRef<{
+    start: [{ x: number; y: number }, { x: number; y: number }];
+    mode: 'scroll' | 'pinch' | null;
+    lastVertical: number;
+  } | null>(null);
+  const usedMultiplePointersRef = useRef(false);
   const initialZoomRef = useRef(1);
 
   const DOUBLE_TAP_MAX_DELAY = 330;
@@ -1032,16 +1039,18 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (isInteractiveElement(e.target)) return;
+    if (activePointers.current.size >= 2) return;
     
     activePointers.current.set(e.pointerId, {
       x: e.clientX,
       y: e.clientY,
       currentX: e.clientX,
       currentY: e.clientY,
-      time: Date.now()
+      pointerType: e.pointerType,
     });
 
     if (activePointers.current.size === 1) {
+      usedMultiplePointersRef.current = false;
       if (isMobile && isIndexOpen) {
         setIsIndexOpen(false);
       }
@@ -1050,14 +1059,23 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       isSwipingRef.current = false;
     } else if (activePointers.current.size === 2) {
       clearPendingSingleTap();
-      const docs = Array.from(activePointers.current.values()) as { x: number, y: number }[];
-      if (docs.length < 2) return;
-      initialTouchDistanceRef.current = Math.hypot(docs[0].x - docs[1].x, docs[0].y - docs[1].y);
+      lastTapRef.current = null;
+      usedMultiplePointersRef.current = true;
+      const [first, second] = Array.from((activePointers.current as Map<number, ViewerPointer>).values());
+      const start = [
+        { x: first.currentX, y: first.currentY },
+        { x: second.currentX, y: second.currentY },
+      ] satisfies [{ x: number; y: number }, { x: number; y: number }];
+      twoFingerRef.current = {
+        start,
+        mode: first.pointerType === 'touch' && second.pointerType === 'touch' ? null : 'pinch',
+        lastVertical: 0,
+      };
       initialZoomRef.current = zoom;
       
       if (zoom <= 1.01) {
-        const cx = (docs[0].x + docs[1].x) / 2;
-        const cy = (docs[0].y + docs[1].y) / 2;
+        const cx = (start[0].x + start[1].x) / 2;
+        const cy = (start[0].y + start[1].y) / 2;
         const containerElement = e.currentTarget as HTMLElement;
         const spreadElement = containerElement.querySelector('.pdf-book-spread') as HTMLElement;
         const rect = spreadElement ? spreadElement.getBoundingClientRect() : containerElement.getBoundingClientRect();
@@ -1086,6 +1104,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     const dy = e.clientY - start.y;
 
     if (activePointers.current.size === 1) {
+      if (usedMultiplePointersRef.current) return;
       if (zoom > 1) {
         if (Math.abs(dx) > TAP_MAX_MOVEMENT || Math.abs(dy) > TAP_MAX_MOVEMENT) {
           if (!isPanningRef.current) {
@@ -1102,11 +1121,20 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
           isSwipingRef.current = true;
         }
       }
-    } else if (activePointers.current.size === 2 && initialTouchDistanceRef.current) {
-      const docs = Array.from(activePointers.current.values()) as { currentX: number, currentY: number }[];
-      if (docs.length < 2) return;
-      const currentDistance = Math.hypot(docs[0].currentX - docs[1].currentX, docs[0].currentY - docs[1].currentY);
-      const scale = currentDistance / initialTouchDistanceRef.current;
+    } else if (activePointers.current.size === 2 && twoFingerRef.current) {
+      const gesture = twoFingerRef.current;
+      const [first, second] = Array.from((activePointers.current as Map<number, ViewerPointer>).values());
+      const { vertical, scale, mode } = getTwoFingerMovement(gesture.start, [
+        { x: first.currentX, y: first.currentY },
+        { x: second.currentX, y: second.currentY },
+      ]);
+      gesture.mode ??= mode;
+      if (gesture.mode === 'scroll') {
+        window.scrollBy({ top: vertical - gesture.lastVertical, behavior: 'instant' });
+        gesture.lastVertical = vertical;
+        return;
+      }
+      if (gesture.mode !== 'pinch') return;
       const newZoom = Math.min(Math.max(initialZoomRef.current * scale, MIN_ZOOM), MAX_ZOOM);
       setZoom(newZoom);
       if (newZoom <= 1.01) {
@@ -1120,16 +1148,13 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
     if (!start) return;
 
     activePointers.current.delete(e.pointerId);
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
 
-    // If we drop from 2 pointers to 1 pointer, we must reset the pan starting point for the remaining pointer
-    if (activePointers.current.size === 1) {
-      const remainingDoc = Array.from(activePointers.current.values())[0] as { currentX: number, currentY: number };
-      startPanRef.current = {
-        x: remainingDoc.currentX - pan.x,
-        y: remainingDoc.currentY - pan.y
-      };
-      // Explicitly return to skip tap/swipe logic for a pinch-ended gesture
+    if (usedMultiplePointersRef.current || e.type === 'pointercancel') {
+      twoFingerRef.current = null;
+      isSwipingRef.current = false;
+      isPanningRef.current = false;
+      setIsPanning(false);
       return;
     }
 

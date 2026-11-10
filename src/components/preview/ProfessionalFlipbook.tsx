@@ -1130,7 +1130,7 @@ export default function ProfessionalFlipbook({ documentId, url, title, onClose, 
       ]);
       gesture.mode ??= mode;
       if (gesture.mode === 'scroll') {
-        window.scrollBy({ top: vertical - gesture.lastVertical, behavior: 'instant' });
+        window.scrollBy({ top: gesture.lastVertical - vertical, behavior: 'instant' });
         gesture.lastVertical = vertical;
         return;
       }

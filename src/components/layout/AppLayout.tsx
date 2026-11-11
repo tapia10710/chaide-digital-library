@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import SidebarDrawer from './SidebarDrawer';
 import Header from './Header';
@@ -8,8 +8,26 @@ import DistributorSessionControl from '../access/DistributorSessionControl';
 import CreditSessionControl from '../access/CreditSessionControl';
 import { useStore } from '../../store/useStore';
 import { isFirebaseSite } from '../../lib/runtimeConfig';
+import { updateDistributorPasswordRequired } from '../../lib/distributorAccess';
 
 export default function AppLayout() {
+  const [accessVersion, setAccessVersion] = useState(0);
+  useEffect(() => {
+    if (!isFirebaseSite) return undefined;
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
+    void Promise.all([import('firebase/firestore'), import('../../lib/firebase')]).then(([firestore, firebase]) => {
+      if (disposed) return;
+      unsubscribe = firestore.onSnapshot(firestore.doc(firebase.db, 'settings', 'distributor-access'), snapshot => {
+        updateDistributorPasswordRequired(snapshot.data()?.passwordRequired !== false);
+        setAccessVersion(version => version + 1);
+      }, () => {
+        updateDistributorPasswordRequired(true);
+        setAccessVersion(version => version + 1);
+      });
+    }).catch(() => updateDistributorPasswordRequired(true));
+    return () => { disposed = true; unsubscribe?.(); };
+  }, []);
   const requestedCategoriesRef = useRef(false);
   const requestedPromotionalBannerRef = useRef(false);
   const requestedDocumentsModeRef = useRef<string | null>(null);
@@ -102,11 +120,11 @@ export default function AppLayout() {
       <SidebarDrawer />
       
       <main className="main-content">
-        <Outlet />
+        <React.Fragment key={role === 'admin' ? 'admin' : accessVersion}><Outlet /></React.Fragment>
       </main>
       
       <MobileBottomNav />
-      <CatalogAssistant />
+      <CatalogAssistant key={accessVersion} />
       <DistributorSessionControl />
       <CreditSessionControl />
     </div>

@@ -5,6 +5,7 @@ import {
   clearDistributorAccess,
   DISTRIBUTOR_ACCESS_EVENT,
   hasDistributorAccess,
+  isDistributorPasswordRequired,
   isDistributorCategory,
   isDistributorDocument,
   refreshDistributorAccess,
@@ -64,7 +65,7 @@ export default function DistributorSessionControl() {
     };
   }, [active, role]);
 
-  if (!isProtectedLocation || (!active && role !== 'admin')) return null;
+  if (!isDistributorPasswordRequired() || !isProtectedLocation || (!active && role !== 'admin')) return null;
 
   return (
     <aside className="distributor-session-control protected-session-control" aria-label="Salida del catálogo de distribuidores">

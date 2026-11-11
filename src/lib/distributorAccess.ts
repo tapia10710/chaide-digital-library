@@ -13,6 +13,22 @@ export const DISTRIBUTOR_ACCESS_TIMEOUT_MS = 20 * 60 * 1000;
 
 type DistributorAccessChangeReason = 'granted' | 'manual' | 'expired';
 
+let passwordRequired = true;
+
+export function isDistributorPasswordRequired() {
+  return passwordRequired;
+}
+
+export function updateDistributorPasswordRequired(required: boolean) {
+  if (passwordRequired === required) return;
+  passwordRequired = required;
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.removeItem(ACCESS_SESSION_KEY);
+    window.sessionStorage.removeItem(ACCESS_ACTIVITY_KEY);
+    window.dispatchEvent(new CustomEvent(DISTRIBUTOR_ACCESS_EVENT, { detail: { reason: 'setting' } }));
+  }
+}
+
 function announceAccessChange(reason: DistributorAccessChangeReason) {
   window.dispatchEvent(new CustomEvent(DISTRIBUTOR_ACCESS_EVENT, { detail: { reason } }));
 }
@@ -43,6 +59,7 @@ export function canViewDistributorDocument(
 
 export function hasDistributorAccess() {
   if (typeof window === 'undefined') return false;
+  if (!passwordRequired) return true;
   if (window.sessionStorage.getItem(ACCESS_SESSION_KEY) !== ACCESS_SESSION_VALUE) return false;
 
   const lastActivity = Number(window.sessionStorage.getItem(ACCESS_ACTIVITY_KEY) || 0);

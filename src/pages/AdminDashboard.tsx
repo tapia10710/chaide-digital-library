@@ -10,6 +10,7 @@ import CategoryManager from '../components/admin/CategoryManager';
 import PromotionalBannerManager from '../components/admin/PromotionalBannerManager';
 import FirebaseUploadPanel from '../components/admin/FirebaseUploadPanel';
 import DriveCatalogSyncPanel from '../components/admin/DriveCatalogSyncPanel';
+import DistributorAccessSettings from '../components/admin/DistributorAccessSettings';
 import { isFirebaseSite } from '../lib/runtimeConfig';
 import { motion, AnimatePresence } from 'motion/react';
 import { repairFirebaseDocumentFromDrive } from '../lib/firebaseCatalogPublication';
@@ -213,6 +214,7 @@ export default function AdminDashboard() {
         </div>
       )}
       {!isFirebaseSite && <AdminLinkImport />}
+      {isFirebaseSite && <DistributorAccessSettings />}
       <PromotionalBannerManager />
       <CategoryManager />
 

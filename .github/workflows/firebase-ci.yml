@@ -30,6 +30,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      - run: npx tsx scripts/verify-distributor-settings.mts
       - run: node --experimental-strip-types scripts/verify-pdf-touch-gesture.mjs
       - run: node scripts/verify-firebase-upload-queue.mjs
       - run: node scripts/verify-credit-access.mjs

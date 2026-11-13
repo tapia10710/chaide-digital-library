@@ -7,7 +7,6 @@ import { catalogCategories, documentMatchesCatalogCategory } from '../lib/catalo
 import DistributorAccessGate from '../components/access/DistributorAccessGate';
 import { isDistributorCategory, canViewDistributorDocument } from '../lib/distributorAccess';
 import { CREDIT_CATEGORY_NAME, isCreditCategory } from '../lib/creditAccess';
-import CreditAccessGate from '../components/access/CreditAccessGate';
 import { compareCatalogOrder } from '../lib/catalogOrder';
 
 export default function CategoryPage() {
@@ -30,7 +29,7 @@ export default function CategoryPage() {
   const creditCategory = isCreditCategory(slug, category.name);
   const categoryTitle = creditCategory ? CREDIT_CATEGORY_NAME : category.name;
   const categoryDescription = creditCategory
-    ? 'Documentos para el área comercial y crédito. Acceso de visualización con clave.'
+    ? 'Documentos para el área comercial y crédito.'
     : category.description;
 
   const page = (
@@ -69,9 +68,6 @@ export default function CategoryPage() {
     </main>
   );
 
-  if (creditCategory) {
-    return <CreditAccessGate bypass={role === 'admin'}>{page}</CreditAccessGate>;
-  }
   if (isDistributorCategory(slug, category.name)) {
     return <DistributorAccessGate bypass={role === 'admin'}>{page}</DistributorAccessGate>;
   }
